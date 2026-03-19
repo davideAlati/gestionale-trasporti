@@ -14,6 +14,8 @@ type Cliente = {
   email: string | null
   telefono: string | null
   indirizzo: string | null
+  partita_iva: string | null
+  nazione: string | null
   created_at: string | null
   spedizioni_count?: number
 }
@@ -23,9 +25,11 @@ type Form = {
   email: string
   telefono: string
   indirizzo: string
+  partita_iva: string
+  nazione: string
 }
 
-const EMPTY_FORM: Form = { nome: '', email: '', telefono: '', indirizzo: '' }
+const EMPTY_FORM: Form = { nome: '', email: '', telefono: '', indirizzo: '', partita_iva: '', nazione: '' }
 
 const PAGE_SIZE = 25
 
@@ -69,10 +73,12 @@ function ClienteModal({
 }) {
   const isNew = !cliente
   const [form, setForm] = useState<Form>({
-    nome:      cliente?.nome      ?? '',
-    email:     cliente?.email     ?? '',
-    telefono:  cliente?.telefono  ?? '',
-    indirizzo: cliente?.indirizzo ?? '',
+    nome:        cliente?.nome        ?? '',
+    email:       cliente?.email       ?? '',
+    telefono:    cliente?.telefono    ?? '',
+    indirizzo:   cliente?.indirizzo   ?? '',
+    partita_iva: cliente?.partita_iva ?? '',
+    nazione:     cliente?.nazione     ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -118,6 +124,18 @@ function ClienteModal({
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Telefono</label>
             <input type="tel" value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))}
               placeholder="+39 02 1234567" className={input} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Partita IVA</label>
+              <input type="text" value={form.partita_iva} onChange={e => setForm(f => ({ ...f, partita_iva: e.target.value }))}
+                placeholder="IT12345678901" className={input} />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Nazione</label>
+              <input type="text" value={form.nazione} onChange={e => setForm(f => ({ ...f, nazione: e.target.value }))}
+                placeholder="Italia" className={input} />
+            </div>
           </div>
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Indirizzo</label>
@@ -180,7 +198,7 @@ export default function ClientiPage() {
 
     let q = supabase
       .from('clienti')
-      .select('id, nome, email, telefono, indirizzo, created_at', { count: 'exact' })
+      .select('id, nome, email, telefono, indirizzo, partita_iva, nazione, created_at', { count: 'exact' })
       .order('nome', { ascending: true })
       .range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1)
 
@@ -216,10 +234,12 @@ export default function ClientiPage() {
 
   async function handleCreate(form: Form) {
     await supabase.from('clienti').insert({
-      nome:      form.nome      || null,
-      email:     form.email     || null,
-      telefono:  form.telefono  || null,
-      indirizzo: form.indirizzo || null,
+      nome:        form.nome        || null,
+      email:       form.email       || null,
+      telefono:    form.telefono    || null,
+      indirizzo:   form.indirizzo   || null,
+      partita_iva: form.partita_iva || null,
+      nazione:     form.nazione     || null,
     })
     setCreating(false)
     fetchClienti(0)
@@ -227,10 +247,12 @@ export default function ClientiPage() {
 
   async function handleSave(form: Form) {
     await supabase.from('clienti').update({
-      nome:      form.nome      || null,
-      email:     form.email     || null,
-      telefono:  form.telefono  || null,
-      indirizzo: form.indirizzo || null,
+      nome:        form.nome        || null,
+      email:       form.email       || null,
+      telefono:    form.telefono    || null,
+      indirizzo:   form.indirizzo   || null,
+      partita_iva: form.partita_iva || null,
+      nazione:     form.nazione     || null,
     }).eq('id', editing!.id)
     setEditing(null)
     fetchClienti(page)
@@ -289,6 +311,8 @@ export default function ClientiPage() {
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Cliente</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Email</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Telefono</th>
+                <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">P. IVA</th>
+                <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Nazione</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Indirizzo</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Spedizioni</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Registrato il</th>
@@ -298,7 +322,7 @@ export default function ClientiPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-slate-50">
-                    {Array.from({ length: 6 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3.5">
                         <div className="h-3 bg-slate-100 rounded animate-pulse w-3/4" />
                       </td>
@@ -307,7 +331,7 @@ export default function ClientiPage() {
                 ))
               ) : clienti.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-16 text-center">
+                  <td colSpan={8} className="px-4 py-16 text-center">
                     <Building2 size={32} className="mx-auto text-slate-200 mb-2" />
                     <p className="text-slate-400 text-sm">Nessun cliente trovato</p>
                   </td>
@@ -327,6 +351,8 @@ export default function ClientiPage() {
                     </td>
                     <td className="px-4 py-3.5 text-slate-600">{c.email ?? '—'}</td>
                     <td className="px-4 py-3.5 text-slate-600 font-mono text-xs">{c.telefono ?? '—'}</td>
+                    <td className="px-4 py-3.5 text-slate-500 text-xs font-mono">{c.partita_iva ?? '—'}</td>
+                    <td className="px-4 py-3.5 text-slate-600 text-xs">{c.nazione ?? '—'}</td>
                     <td className="px-4 py-3.5 text-slate-500 text-xs max-w-[200px] truncate">{c.indirizzo ?? '—'}</td>
                     <td className="px-4 py-3.5">
                       {(c.spedizioni_count ?? 0) > 0 ? (
