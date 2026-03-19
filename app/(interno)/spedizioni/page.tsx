@@ -497,13 +497,13 @@ export default function SpedizioniPage() {
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide w-10">#</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Cliente</th>
+                <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Rif.</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Tratta</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Autista / Targhe</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Carico</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Scarico</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Stato</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Peso / MTL</th>
-                <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Rif.</th>
               </tr>
             </thead>
             <tbody>
@@ -538,6 +538,9 @@ export default function SpedizioniPage() {
                     >
                       <td className="px-4 py-3 text-slate-400 text-xs font-mono">{s.id}</td>
                       <td className="px-4 py-3 font-semibold text-slate-800">{s.clienti?.nome ?? '—'}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs font-mono">
+                        {s.ref_cliente ? `#${s.ref_cliente}` : '—'}
+                      </td>
                       <td className="px-4 py-3 text-slate-600">
                         <span className="font-medium">{s.origine || '—'}</span>
                         <span className="text-slate-400 mx-1">→</span>
@@ -562,9 +565,6 @@ export default function SpedizioniPage() {
                         {s.peso_kg != null && s.mtl != null && <span className="text-slate-300 mx-1">·</span>}
                         {s.mtl != null && <span>{s.mtl} mtl</span>}
                         {s.peso_kg == null && s.mtl == null && '—'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs font-mono">
-                        {s.ref_cliente ? `#${s.ref_cliente}` : '—'}
                       </td>
                     </tr>
                   )
