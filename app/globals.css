@@ -116,6 +116,17 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@keyframes card-flash {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; background-color: white; }
+  25%       { box-shadow: 0 0 0 3px #3b82f6; background-color: #eff6ff; }
+  50%       { box-shadow: 0 0 0 0 transparent; background-color: white; }
+  75%       { box-shadow: 0 0 0 3px #3b82f6; background-color: #eff6ff; }
+}
+
+.card-flash {
+  animation: card-flash 3s ease-in-out;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

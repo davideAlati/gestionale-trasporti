@@ -118,10 +118,12 @@ function calcolaStato(autistaId: string, statoCorrente: Stato): Stato {
 function KanbanCard({
   spedizione,
   targa,
+  isFlashing,
   onClick,
 }: {
   spedizione: SpedizioneRaw
   targa: string | null
+  isFlashing: boolean
   onClick: () => void
 }) {
   const cfg = STATO_CONFIG[spedizione.stato]
@@ -133,7 +135,7 @@ function KanbanCard({
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer px-3 py-2.5"
+      className={`bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer px-3 py-2.5 ${isFlashing ? 'card-flash' : ''}`}
     >
       {/* Stato badge */}
       <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full mb-1.5 ${cfg.badge}`}>
@@ -473,6 +475,7 @@ export default function KanbanPage() {
   const [zoom, setZoom] = useState(100)
   const [editing, setEditing] = useState<SpedizioneRaw | null>(null)
   const [creating, setCreating] = useState<string | null>(null) // data_partenza precompilata
+  const [flashingIds, setFlashingIds] = useState<Set<number>>(new Set())
 
   const supabase = createClient()
 
@@ -542,8 +545,15 @@ export default function KanbanPage() {
     return () => { supabase.removeChannel(channel) }
   }, [fetchSpedizioni]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  function flashCard(id: number) {
+    setFlashingIds(prev => new Set(prev).add(id))
+    setTimeout(() => {
+      setFlashingIds(prev => { const s = new Set(prev); s.delete(id); return s })
+    }, 3000)
+  }
+
   async function handleCreate(form: EditForm) {
-    await supabase.from('spedizioni').insert({
+    const { data } = await supabase.from('spedizioni').insert({
       cliente_id:          form.cliente_id   ? Number(form.cliente_id)   : null,
       autista_id:          form.autista_id   ? Number(form.autista_id)   : null,
       origine:             form.origine      || null,
@@ -556,12 +566,14 @@ export default function KanbanPage() {
       data_arrivo:         form.data_arrivo  || null,
       targa_semirimorchio: form.targa_semirimorchio || null,
       stato:               form.stato,
-    })
+    }).select('id').single()
     setCreating(null)
-    fetchSpedizioni()
+    await fetchSpedizioni()
+    if (data?.id) flashCard(data.id)
   }
 
   async function handleSave(form: EditForm) {
+    const id = editing!.id
     await supabase.from('spedizioni').update({
       cliente_id:          form.cliente_id   ? Number(form.cliente_id)   : null,
       autista_id:          form.autista_id   ? Number(form.autista_id)   : null,
@@ -575,10 +587,10 @@ export default function KanbanPage() {
       data_arrivo:         form.data_arrivo  || null,
       targa_semirimorchio: form.targa_semirimorchio || null,
       stato:               form.stato,
-    }).eq('id', editing!.id)
-
+    }).eq('id', id)
     setEditing(null)
-    fetchSpedizioni()
+    await fetchSpedizioni()
+    flashCard(id)
   }
 
   const weekDays = getWeekDays(weekOffset)
@@ -678,6 +690,7 @@ export default function KanbanPage() {
                       key={s.id}
                       spedizione={s}
                       targa={s.autista_id ? (targaByAutista[s.autista_id] ?? null) : null}
+                      isFlashing={flashingIds.has(s.id)}
                       onClick={() => setEditing(s)}
                     />
                   ))}
@@ -701,6 +714,7 @@ export default function KanbanPage() {
                     key={s.id}
                     spedizione={s}
                     targa={s.autista_id ? (targaByAutista[s.autista_id] ?? null) : null}
+                    isFlashing={flashingIds.has(s.id)}
                     onClick={() => setEditing(s)}
                   />
                 ))}
