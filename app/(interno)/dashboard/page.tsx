@@ -13,7 +13,8 @@ type Spedizione = {
   stato: string | null
   data_partenza: string | null
   clienti: { nome: string } | null
-  tratta: string | null
+  origine: string | null
+  destinazione: string | null
 }
 
 type Manutenzione = {
@@ -108,11 +109,11 @@ export default function DashboardPage() {
       dopodomani.setDate(oggi.getDate() + 2)
       const dopodomaniStr = toDateStr(dopodomani)
 
-      const [resSettimana, resManutenzioni, resProssimiCarichi] = await Promise.all([
+      const [resSettimana, resManutenzioni, resProssimiCarichi, resNonAssegnati] = await Promise.all([
         // Spedizioni della settimana
         supabase
           .from('spedizioni')
-          .select('id, stato, data_partenza, tratta, clienti(nome)')
+          .select('id, stato, data_partenza, origine, destinazione, clienti(nome)')
           .gte('data_partenza', lunediStr)
           .lte('data_partenza', domenicaStr)
           .order('data_partenza'),
@@ -127,17 +128,22 @@ export default function DashboardPage() {
         // Prossimi carichi (oggi + dopodomani)
         supabase
           .from('spedizioni')
-          .select('id, stato, data_partenza, tratta, clienti(nome)')
+          .select('id, stato, data_partenza, origine, destinazione, clienti(nome)')
           .gte('data_partenza', oggiStr)
           .lte('data_partenza', dopodomaniStr)
           .order('data_partenza'),
+
+        // Non assegnate oggi (query dedicata)
+        supabase
+          .from('spedizioni')
+          .select('id', { count: 'exact', head: true })
+          .eq('stato', 'Non Assegnato')
+          .eq('data_partenza', oggiStr),
       ])
 
       const settimana = (resSettimana.data ?? []) as unknown as Spedizione[]
       setSpedizioniSettimana(settimana)
-      setNonAssegnatiOggi(
-        settimana.filter(s => s.stato === 'Non Assegnato' && s.data_partenza === oggiStr).length
-      )
+      setNonAssegnatiOggi(resNonAssegnati.count ?? 0)
       setManutenzioni((resManutenzioni.data ?? []) as Manutenzione[])
       setProssimiCarichi((resProssimiCarichi.data ?? []) as unknown as Spedizione[])
       setLoading(false)
@@ -213,7 +219,7 @@ export default function DashboardPage() {
                     <p className="text-xs font-semibold text-slate-800 truncate">
                       {(s.clienti as any)?.nome ?? '—'}
                     </p>
-                    <p className="text-[11px] text-slate-400 truncate">{s.tratta ?? '—'}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{s.origine && s.destinazione ? `${s.origine} → ${s.destinazione}` : '—'}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className="text-[11px] text-slate-400">{fmtData(s.data_partenza!)}</span>
@@ -294,7 +300,7 @@ export default function DashboardPage() {
                   <div className="min-w-0 flex items-center gap-3">
                     <span className="text-[11px] text-slate-400 flex-shrink-0 w-16">{fmtData(s.data_partenza!)}</span>
                     <p className="text-xs font-semibold text-slate-800 truncate">{(s.clienti as any)?.nome ?? '—'}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{s.tratta ?? '—'}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{s.origine && s.destinazione ? `${s.origine} → ${s.destinazione}` : '—'}</p>
                   </div>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 ${c.bg} ${c.text}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
