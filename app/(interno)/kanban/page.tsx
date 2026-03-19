@@ -35,6 +35,7 @@ type SpedizioneRaw = {
   note: string | null
   data_partenza: string | null
   data_arrivo: string | null
+  targa_semirimorchio: string | null
   stato: Stato
   clienti: { nome: string | null } | null
   autisti: { nome: string | null; cognome: string | null } | null
@@ -63,6 +64,7 @@ type EditForm = {
   note: string
   data_partenza: string
   data_arrivo: string
+  targa_semirimorchio: string
   stato: Stato
 }
 
@@ -149,14 +151,22 @@ function KanbanCard({
         {spedizione.origine || '—'} → {spedizione.destinazione || '—'}
       </p>
 
-      {/* Autista + Targa */}
+      {/* Autista + Targhe */}
       {autistaNome ? (
-        <div className="flex items-center gap-1.5 mt-1.5">
-          <span className="text-[10px] text-slate-500 truncate">{autistaNome}</span>
-          {targa && (
-            <span className="flex items-center gap-0.5 text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono shrink-0">
+        <div className="mt-1.5 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-slate-500 truncate">{autistaNome}</span>
+            {targa && (
+              <span className="flex items-center gap-0.5 text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono shrink-0">
+                <Truck size={8} />
+                {targa}
+              </span>
+            )}
+          </div>
+          {spedizione.targa_semirimorchio && (
+            <span className="flex items-center gap-0.5 text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono w-fit">
               <Truck size={8} />
-              {targa}
+              {spedizione.targa_semirimorchio}
             </span>
           )}
         </div>
@@ -198,17 +208,18 @@ function EditModal({
   onClose: () => void
 }) {
   const [form, setForm] = useState<EditForm>({
-    cliente_id:   String(spedizione.cliente_id ?? ''),
-    autista_id:   String(spedizione.autista_id ?? ''),
-    origine:      spedizione.origine ?? '',
-    destinazione: spedizione.destinazione ?? '',
-    peso_kg:      spedizione.peso_kg != null ? String(spedizione.peso_kg) : '',
-    mtl:          spedizione.mtl != null ? String(spedizione.mtl) : '',
-    ref_cliente:  spedizione.ref_cliente ?? '',
-    note:         spedizione.note ?? '',
-    data_partenza: spedizione.data_partenza ?? '',
-    data_arrivo:  spedizione.data_arrivo ?? '',
-    stato:        spedizione.stato,
+    cliente_id:          String(spedizione.cliente_id ?? ''),
+    autista_id:          String(spedizione.autista_id ?? ''),
+    origine:             spedizione.origine ?? '',
+    destinazione:        spedizione.destinazione ?? '',
+    peso_kg:             spedizione.peso_kg != null ? String(spedizione.peso_kg) : '',
+    mtl:                 spedizione.mtl != null ? String(spedizione.mtl) : '',
+    ref_cliente:         spedizione.ref_cliente ?? '',
+    note:                spedizione.note ?? '',
+    data_partenza:       spedizione.data_partenza ?? '',
+    data_arrivo:         spedizione.data_arrivo ?? '',
+    targa_semirimorchio: spedizione.targa_semirimorchio ?? '',
+    stato:               spedizione.stato,
   })
   const [saving, setSaving] = useState(false)
 
@@ -384,6 +395,18 @@ function EditModal({
             </div>
           </div>
 
+          {/* Targa semirimorchio */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Targa Semirimorchio</label>
+            <input
+              type="text"
+              value={form.targa_semirimorchio}
+              onChange={e => setForm(f => ({ ...f, targa_semirimorchio: e.target.value.toUpperCase() }))}
+              placeholder="Es. AB123CD"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono uppercase"
+            />
+          </div>
+
           {/* Ref cliente */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Riferimento Cliente</label>
@@ -478,7 +501,7 @@ export default function KanbanPage() {
     const mondayStr = toDateStr(days[0])
     const sundayStr = toDateStr(days[6])
 
-    const SELECT = 'id, cliente_id, autista_id, origine, destinazione, peso_kg, mtl, ref_cliente, note, data_partenza, data_arrivo, stato, clienti(nome), autisti(nome, cognome)'
+    const SELECT = 'id, cliente_id, autista_id, origine, destinazione, peso_kg, mtl, ref_cliente, note, data_partenza, data_arrivo, targa_semirimorchio, stato, clienti(nome), autisti(nome, cognome)'
 
     const { data: conData } = await supabase
       .from('spedizioni')
@@ -501,17 +524,18 @@ export default function KanbanPage() {
 
   async function handleSave(form: EditForm) {
     await supabase.from('spedizioni').update({
-      cliente_id:   form.cliente_id   ? Number(form.cliente_id)   : null,
-      autista_id:   form.autista_id   ? Number(form.autista_id)   : null,
-      origine:      form.origine      || null,
-      destinazione: form.destinazione || null,
-      peso_kg:      form.peso_kg      ? Number(form.peso_kg)      : null,
-      mtl:          form.mtl          ? Number(form.mtl)          : null,
-      ref_cliente:  form.ref_cliente  || null,
-      note:         form.note         || null,
-      data_partenza: form.data_partenza || null,
-      data_arrivo:  form.data_arrivo  || null,
-      stato:        form.stato,
+      cliente_id:          form.cliente_id   ? Number(form.cliente_id)   : null,
+      autista_id:          form.autista_id   ? Number(form.autista_id)   : null,
+      origine:             form.origine      || null,
+      destinazione:        form.destinazione || null,
+      peso_kg:             form.peso_kg      ? Number(form.peso_kg)      : null,
+      mtl:                 form.mtl          ? Number(form.mtl)          : null,
+      ref_cliente:         form.ref_cliente  || null,
+      note:                form.note         || null,
+      data_partenza:       form.data_partenza || null,
+      data_arrivo:         form.data_arrivo  || null,
+      targa_semirimorchio: form.targa_semirimorchio || null,
+      stato:               form.stato,
     }).eq('id', editing!.id)
 
     setEditing(null)
@@ -585,19 +609,11 @@ export default function KanbanPage() {
 
             return (
               <div key={key} className="w-[230px] shrink-0 flex flex-col">
-                <div className={`rounded-xl px-3 py-2.5 mb-2.5 flex items-end justify-between ${oggi ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                  <div>
-                    <p className={`text-[11px] font-semibold uppercase tracking-wider ${oggi ? 'text-blue-200' : 'text-slate-500'}`}>
-                      {GIORNI_IT[day.getDay()]}
-                    </p>
-                    <p className={`text-3xl font-bold leading-none mt-0.5 ${oggi ? 'text-white' : 'text-slate-800'}`}>
-                      {day.getDate()}
-                    </p>
-                    <p className={`text-[11px] mt-0.5 ${oggi ? 'text-blue-200' : 'text-slate-500'}`}>
-                      {MESI_IT[day.getMonth()]}
-                    </p>
-                  </div>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${oggi ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                <div className={`rounded-xl px-3 py-2 mb-2.5 flex items-center justify-between ${oggi ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                  <p className={`text-[12px] font-bold ${oggi ? 'text-white' : 'text-slate-700'}`}>
+                    {GIORNI_IT[day.getDay()]} {day.getDate()} {MESI_IT[day.getMonth()]}
+                  </p>
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${oggi ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>
                     {cards.length}
                   </span>
                 </div>
@@ -625,13 +641,9 @@ export default function KanbanPage() {
           {/* Colonna senza data */}
           {byDay['senza_data'].length > 0 && (
             <div className="w-[230px] shrink-0 flex flex-col">
-              <div className="rounded-xl px-3 py-2.5 mb-2.5 flex items-end justify-between bg-slate-100">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Non Assegnato</p>
-                  <p className="text-3xl font-bold leading-none mt-0.5 text-slate-400">—</p>
-                  <p className="text-[11px] mt-0.5 text-slate-500">Senza data</p>
-                </div>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
+              <div className="rounded-xl px-3 py-2 mb-2.5 flex items-center justify-between bg-slate-100">
+                <p className="text-[12px] font-bold text-slate-500">Non Assegnato — Senza data</p>
+                <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">
                   {byDay['senza_data'].length}
                 </span>
               </div>
