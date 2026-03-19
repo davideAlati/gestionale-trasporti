@@ -787,18 +787,6 @@ export default function KanbanPage() {
         />
       )}
 
-      {/* ── Legenda ── */}
-      <div className="fixed bottom-6 left-20 bg-white rounded-xl border border-slate-200 shadow-md px-4 py-3 z-40">
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Legenda</p>
-        <div className="space-y-1.5">
-          {STATI.map(s => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${STATO_CONFIG[s].dot} shrink-0`} />
-              <span className="text-[11px] text-slate-600">{s}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
