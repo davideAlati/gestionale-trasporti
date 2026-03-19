@@ -53,7 +53,7 @@ type Documento = {
   id: number
   nome_file: string
   tipo_documento: string
-  storage_path: string
+  percorso_file: string | null
   created_at: string
 }
 
@@ -95,7 +95,7 @@ function DocumentiSection({ veicoloId }: { veicoloId: number }) {
     setLoading(true)
     const { data } = await supabase
       .from('documenti')
-      .select('id, nome_file, tipo_documento, storage_path, created_at')
+      .select('id, nome_file, tipo_documento, percorso_file, created_at')
       .eq('entita_tipo', 'veicolo')
       .eq('entita_id', veicoloId)
       .order('created_at', { ascending: false })
@@ -125,7 +125,7 @@ function DocumentiSection({ veicoloId }: { veicoloId: number }) {
       entita_id:       veicoloId,
       nome_file:       file.name,
       tipo_documento:  tipoScelto,
-      storage_path:    path,
+      percorso_file:   path,
     })
     if (dbErr) {
       setUploadError(`Errore salvataggio: ${dbErr.message}`)
@@ -141,12 +141,13 @@ function DocumentiSection({ veicoloId }: { veicoloId: number }) {
   }
 
   async function handleView(doc: Documento) {
-    const { data } = await supabase.storage.from(BUCKET).createSignedUrl(doc.storage_path, 60)
+    if (!doc.percorso_file) return
+    const { data } = await supabase.storage.from(BUCKET).createSignedUrl(doc.percorso_file, 60)
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
   }
 
   async function handleDelete(doc: Documento) {
-    await supabase.storage.from(BUCKET).remove([doc.storage_path])
+    if (doc.percorso_file) await supabase.storage.from(BUCKET).remove([doc.percorso_file])
     await supabase.from('documenti').delete().eq('id', doc.id)
     fetchDocs()
   }
