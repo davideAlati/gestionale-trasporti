@@ -2,9 +2,9 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Search, Plus, X, Save, Trash2, ChevronLeft, ChevronRight, Truck, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
+import { Search, Plus, X, Save, Trash2, ChevronLeft, ChevronRight, Truck, AlertTriangle, CheckCircle, Clock, Upload, FileText, Eye, Loader2 } from 'lucide-react'
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
 
@@ -18,6 +18,8 @@ const STATO_VEI_CONFIG: Record<StatoVeicolo, { badge: string; text: string; icon
   'Venduto':         { badge: 'bg-slate-100', text: 'text-slate-500', icon: null },
 }
 
+const CATEGORIE_VEICOLO = ['Camion', 'Semirimorchio', 'Furgone', 'Altro']
+
 type Veicolo = {
   id: number
   targa: string
@@ -28,6 +30,7 @@ type Veicolo = {
   km_attuali: number | null
   autista_id: number | null
   stato: StatoVeicolo | null
+  categoria: string | null
   created_at: string | null
   autista_nome?: string | null
 }
@@ -43,9 +46,20 @@ type Form = {
   km_attuali: string
   autista_id: string
   stato: StatoVeicolo
+  categoria: string
+}
+
+type Documento = {
+  id: number
+  nome_file: string
+  tipo_documento: string
+  storage_path: string
+  created_at: string
 }
 
 const PAGE_SIZE = 25
+const BUCKET = 'veicoli-docs'
+const TIPI_DOC = ['Libretto', 'Assicurazione', 'Revisione', 'Bollo', 'Contratto', 'Altro']
 
 // ─── Utilità ─────────────────────────────────────────────────────────────────
 
@@ -63,6 +77,134 @@ function StatoVeicoloBadge({ stato }: { stato: StatoVeicolo | null }) {
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${c.badge} ${c.text}`}>
       {c.icon} {stato}
     </span>
+  )
+}
+
+// ─── Sezione Documenti ────────────────────────────────────────────────────────
+
+function DocumentiSection({ veicoloId }: { veicoloId: number }) {
+  const supabase = createClient()
+  const [documenti, setDocumenti] = useState<Documento[]>([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [tipoScelto, setTipoScelto] = useState(TIPI_DOC[0])
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const fetchDocs = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('documenti')
+      .select('id, nome_file, tipo_documento, storage_path, created_at')
+      .eq('entita_tipo', 'veicolo')
+      .eq('entita_id', veicoloId)
+      .order('created_at', { ascending: false })
+    setDocumenti((data ?? []) as Documento[])
+    setLoading(false)
+  }, [veicoloId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { fetchDocs() }, [fetchDocs])
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setUploadError(null)
+
+    const path = `${veicoloId}/${Date.now()}_${file.name}`
+    const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file)
+    if (upErr) {
+      setUploadError(`Errore upload: ${upErr.message}`)
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+
+    const { error: dbErr } = await supabase.from('documenti').insert({
+      entita_tipo:     'veicolo',
+      entita_id:       veicoloId,
+      nome_file:       file.name,
+      tipo_documento:  tipoScelto,
+      storage_path:    path,
+    })
+    if (dbErr) {
+      setUploadError(`Errore salvataggio: ${dbErr.message}`)
+      await supabase.storage.from(BUCKET).remove([path])
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+
+    setUploading(false)
+    if (fileRef.current) fileRef.current.value = ''
+    fetchDocs()
+  }
+
+  async function handleView(doc: Documento) {
+    const { data } = await supabase.storage.from(BUCKET).createSignedUrl(doc.storage_path, 60)
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+  }
+
+  async function handleDelete(doc: Documento) {
+    await supabase.storage.from(BUCKET).remove([doc.storage_path])
+    await supabase.from('documenti').delete().eq('id', doc.id)
+    fetchDocs()
+  }
+
+  const input = 'border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
+
+  return (
+    <div className="mt-5 border-t border-slate-100 pt-4">
+      <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-3">Documenti</h3>
+
+      {/* Upload */}
+      <div className="flex items-center gap-2 mb-3">
+        <select value={tipoScelto} onChange={e => setTipoScelto(e.target.value)} className={`${input} flex-shrink-0`}>
+          {TIPI_DOC.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <label className={`flex items-center gap-1.5 px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+          {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+          {uploading ? 'Caricamento…' : 'Carica file'}
+          <input ref={fileRef} type="file" className="hidden" onChange={handleUpload}
+            accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" />
+        </label>
+      </div>
+
+      {uploadError && (
+        <div className="mb-2 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{uploadError}</div>
+      )}
+
+      {/* Lista */}
+      {loading ? (
+        <div className="text-xs text-slate-400">Caricamento…</div>
+      ) : documenti.length === 0 ? (
+        <div className="text-xs text-slate-400 italic">Nessun documento caricato</div>
+      ) : (
+        <div className="space-y-1.5">
+          {documenti.map(doc => (
+            <div key={doc.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText size={13} className="text-slate-400 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-700 truncate">{doc.nome_file}</p>
+                  <p className="text-[10px] text-slate-400">{doc.tipo_documento}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                <button onClick={() => handleView(doc)}
+                  className="p-1.5 rounded hover:bg-slate-200 text-slate-500 transition-colors" title="Visualizza">
+                  <Eye size={13} />
+                </button>
+                <button onClick={() => handleDelete(doc)}
+                  className="p-1.5 rounded hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors" title="Elimina">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -87,6 +229,7 @@ function VeicoloModal({
     km_attuali:  veicolo?.km_attuali  != null ? String(veicolo.km_attuali)  : '',
     autista_id:  String(veicolo?.autista_id ?? ''),
     stato:       (veicolo?.stato as StatoVeicolo) ?? 'Attivo',
+    categoria:   veicolo?.categoria ?? 'Camion',
   })
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -129,6 +272,14 @@ function VeicoloModal({
               placeholder="AB123CD" disabled={!isNew}
               className={`${input} font-mono uppercase ${!isNew ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`} />
             {!isNew && <p className="text-[10px] text-slate-400 mt-0.5">La targa non può essere modificata</p>}
+          </div>
+
+          {/* Categoria */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Categoria</label>
+            <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} className={input}>
+              {CATEGORIE_VEICOLO.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
 
           {/* Marca / Modello */}
@@ -202,6 +353,9 @@ function VeicoloModal({
               })}
             </div>
           </div>
+
+          {/* Documenti (solo in edit) */}
+          {!isNew && veicolo && <DocumentiSection veicoloId={veicolo.id} />}
         </div>
 
         {/* Footer */}
@@ -265,7 +419,7 @@ export default function VeicoliPage() {
 
     let q = supabase
       .from('veicoli')
-      .select('id, targa, marca, modello, anno, km_acquisto, km_attuali, autista_id, stato, created_at, autisti(nome, cognome)', { count: 'exact' })
+      .select('id, targa, marca, modello, anno, km_acquisto, km_attuali, autista_id, stato, categoria, created_at, autisti(nome, cognome)', { count: 'exact' })
       .order('targa', { ascending: true })
       .range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1)
 
@@ -297,6 +451,7 @@ export default function VeicoliPage() {
       km_attuali:  form.km_attuali  ? Number(form.km_attuali)  : null,
       autista_id:  form.autista_id  ? Number(form.autista_id)  : null,
       stato:       form.stato,
+      categoria:   form.categoria,
     })
     setCreating(false)
     fetchVeicoli(0)
@@ -311,6 +466,7 @@ export default function VeicoliPage() {
       km_attuali:  form.km_attuali  ? Number(form.km_attuali)  : null,
       autista_id:  form.autista_id  ? Number(form.autista_id)  : null,
       stato:       form.stato,
+      categoria:   form.categoria,
     }).eq('targa', editing!.targa)
     setEditing(null)
     fetchVeicoli(page)
@@ -371,6 +527,7 @@ export default function VeicoliPage() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Targa</th>
+                <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Categoria</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Veicolo</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Anno</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">KM acquisto</th>
@@ -384,14 +541,14 @@ export default function VeicoliPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-slate-50">
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 9 }).map((_, j) => (
                       <td key={j} className="px-4 py-3.5"><div className="h-3 bg-slate-100 rounded animate-pulse w-3/4" /></td>
                     ))}
                   </tr>
                 ))
               ) : veicoli.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-16 text-center">
+                  <td colSpan={9} className="px-4 py-16 text-center">
                     <Truck size={32} className="mx-auto text-slate-200 mb-2" />
                     <p className="text-slate-400 text-sm">Nessun veicolo trovato</p>
                   </td>
@@ -407,6 +564,7 @@ export default function VeicoliPage() {
                         {v.targa}
                       </span>
                     </td>
+                    <td className="px-4 py-3.5 text-slate-500 text-xs">{v.categoria ?? 'Camion'}</td>
                     <td className="px-4 py-3.5 font-semibold text-slate-800">{v.marca} {v.modello}</td>
                     <td className="px-4 py-3.5 text-slate-500 text-xs">{v.anno ?? '—'}</td>
                     <td className="px-4 py-3.5 text-slate-500 text-xs">{fmtKm(v.km_acquisto)}</td>
