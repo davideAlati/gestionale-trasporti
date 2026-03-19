@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Search, Plus, X, Save, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Plus, X, Save, Trash2, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react'
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
 
@@ -504,6 +504,7 @@ export default function SpedizioniPage() {
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Scarico</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Stato</th>
                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Peso / MTL</th>
+                <th className="px-4 py-3 w-8"></th>
               </tr>
             </thead>
             <tbody>
@@ -519,7 +520,7 @@ export default function SpedizioniPage() {
                 ))
               ) : spedizioni.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-16 text-center text-slate-400 text-sm">
+                  <td colSpan={10} className="px-4 py-16 text-center text-slate-400 text-sm">
                     Nessuna spedizione trovata
                   </td>
                 </tr>
@@ -565,6 +566,20 @@ export default function SpedizioniPage() {
                         {s.peso_kg != null && s.mtl != null && <span className="text-slate-300 mx-1">·</span>}
                         {s.mtl != null && <span>{s.mtl} mtl</span>}
                         {s.peso_kg == null && s.mtl == null && '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                        {s.note ? (
+                          <div className="relative inline-block group">
+                            <button className="text-blue-400 hover:text-blue-600 transition-colors">
+                              <MessageSquare size={15} />
+                            </button>
+                            <div className="absolute right-0 bottom-full mb-2 w-64 bg-slate-800 text-white text-xs rounded-xl px-3 py-2.5 shadow-xl
+                              opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 leading-relaxed whitespace-pre-wrap">
+                              {s.note}
+                              <div className="absolute right-2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-800" />
+                            </div>
+                          </div>
+                        ) : null}
                       </td>
                     </tr>
                   )
