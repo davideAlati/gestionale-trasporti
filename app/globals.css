@@ -124,7 +124,7 @@
 }
 
 .card-flash {
-  animation: card-flash 3s ease-in-out;
+  animation: card-flash 5s ease-in-out;
 }
 
 @layer base {

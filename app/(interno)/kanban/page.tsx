@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ChevronLeft, ChevronRight, Minus, Plus, X, Save } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Minus, Plus, X, Save, Trash2 } from 'lucide-react'
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
 
@@ -211,6 +211,7 @@ function SpedizioneModal({
   clienti: Cliente[]
   autisti: Autista[]
   onSave: (form: EditForm) => Promise<void>
+  onDelete?: () => Promise<void>
   onClose: () => void
 }) {
   const isNew = !spedizione
@@ -229,6 +230,7 @@ function SpedizioneModal({
     stato:               spedizione?.stato ?? 'Non Assegnato',
   })
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   function handleAutistaChange(autistaId: string) {
     const nuovoStato = calcolaStato(autistaId, form.stato)
@@ -442,21 +444,51 @@ function SpedizioneModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition-colors"
-          >
-            Annulla
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
-          >
-            <Save size={14} />
-            {saving ? 'Salvataggio...' : isNew ? 'Crea' : 'Salva'}
-          </button>
+        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between gap-2">
+          {/* Elimina (solo in modifica) */}
+          <div>
+            {!isNew && onDelete && (
+              confirmDelete ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] text-red-600 font-semibold">Confermi eliminazione?</span>
+                  <button
+                    onClick={onDelete}
+                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors"
+                  >
+                    Sì, elimina
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs transition-colors"
+                  >
+                    Annulla
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 text-xs font-semibold rounded-lg transition-colors"
+                >
+                  <Trash2 size={13} />
+                  Elimina carico
+                </button>
+              )
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition-colors">
+              Annulla
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
+            >
+              <Save size={14} />
+              {saving ? 'Salvataggio...' : isNew ? 'Crea' : 'Salva'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -549,7 +581,7 @@ export default function KanbanPage() {
     setFlashingIds(prev => new Set(prev).add(id))
     setTimeout(() => {
       setFlashingIds(prev => { const s = new Set(prev); s.delete(id); return s })
-    }, 3000)
+    }, 5000)
   }
 
   async function handleCreate(form: EditForm) {
@@ -570,6 +602,13 @@ export default function KanbanPage() {
     setCreating(null)
     await fetchSpedizioni()
     if (data?.id) flashCard(data.id)
+  }
+
+  async function handleDelete() {
+    if (!editing) return
+    await supabase.from('spedizioni').delete().eq('id', editing.id)
+    setEditing(null)
+    fetchSpedizioni()
   }
 
   async function handleSave(form: EditForm) {
@@ -731,6 +770,7 @@ export default function KanbanPage() {
           clienti={clienti}
           autisti={autisti}
           onSave={handleSave}
+          onDelete={handleDelete}
           onClose={() => setEditing(null)}
         />
       )}
