@@ -194,34 +194,37 @@ function CardSkeleton() {
   )
 }
 
-// ─── Modal modifica spedizione ────────────────────────────────────────────────
+// ─── Modal spedizione (modifica + creazione) ──────────────────────────────────
 
-function EditModal({
+function SpedizioneModal({
   spedizione,
+  dataPartenzaDefault,
   clienti,
   autisti,
   onSave,
   onClose,
 }: {
-  spedizione: SpedizioneRaw
+  spedizione?: SpedizioneRaw
+  dataPartenzaDefault?: string
   clienti: Cliente[]
   autisti: Autista[]
   onSave: (form: EditForm) => Promise<void>
   onClose: () => void
 }) {
+  const isNew = !spedizione
   const [form, setForm] = useState<EditForm>({
-    cliente_id:          String(spedizione.cliente_id ?? ''),
-    autista_id:          String(spedizione.autista_id ?? ''),
-    origine:             spedizione.origine ?? '',
-    destinazione:        spedizione.destinazione ?? '',
-    peso_kg:             spedizione.peso_kg != null ? String(spedizione.peso_kg) : '',
-    mtl:                 spedizione.mtl != null ? String(spedizione.mtl) : '',
-    ref_cliente:         spedizione.ref_cliente ?? '',
-    note:                spedizione.note ?? '',
-    data_partenza:       spedizione.data_partenza ?? '',
-    data_arrivo:         spedizione.data_arrivo ?? '',
-    targa_semirimorchio: spedizione.targa_semirimorchio ?? '',
-    stato:               spedizione.stato,
+    cliente_id:          String(spedizione?.cliente_id ?? ''),
+    autista_id:          String(spedizione?.autista_id ?? ''),
+    origine:             spedizione?.origine ?? '',
+    destinazione:        spedizione?.destinazione ?? '',
+    peso_kg:             spedizione?.peso_kg != null ? String(spedizione.peso_kg) : '',
+    mtl:                 spedizione?.mtl != null ? String(spedizione.mtl) : '',
+    ref_cliente:         spedizione?.ref_cliente ?? '',
+    note:                spedizione?.note ?? '',
+    data_partenza:       spedizione?.data_partenza ?? dataPartenzaDefault ?? '',
+    data_arrivo:         spedizione?.data_arrivo ?? '',
+    targa_semirimorchio: spedizione?.targa_semirimorchio ?? '',
+    stato:               spedizione?.stato ?? 'Non Assegnato',
   })
   const [saving, setSaving] = useState(false)
 
@@ -255,7 +258,9 @@ function EditModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="text-[15px] font-bold text-slate-800">Modifica Spedizione #{spedizione.id}</h2>
+          <h2 className="text-[15px] font-bold text-slate-800">
+            {isNew ? 'Nuova Spedizione' : `Modifica Spedizione #${spedizione!.id}`}
+          </h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">
             <X size={16} />
           </button>
@@ -448,7 +453,7 @@ function EditModal({
             className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
           >
             <Save size={14} />
-            {saving ? 'Salvataggio...' : 'Salva'}
+            {saving ? 'Salvataggio...' : isNew ? 'Crea' : 'Salva'}
           </button>
         </div>
       </div>
@@ -467,6 +472,7 @@ export default function KanbanPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [zoom, setZoom] = useState(100)
   const [editing, setEditing] = useState<SpedizioneRaw | null>(null)
+  const [creating, setCreating] = useState<string | null>(null) // data_partenza precompilata
 
   const supabase = createClient()
 
@@ -523,6 +529,25 @@ export default function KanbanPage() {
   }, [weekOffset]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchSpedizioni() }, [fetchSpedizioni])
+
+  async function handleCreate(form: EditForm) {
+    await supabase.from('spedizioni').insert({
+      cliente_id:          form.cliente_id   ? Number(form.cliente_id)   : null,
+      autista_id:          form.autista_id   ? Number(form.autista_id)   : null,
+      origine:             form.origine      || null,
+      destinazione:        form.destinazione || null,
+      peso_kg:             form.peso_kg      ? Number(form.peso_kg)      : null,
+      mtl:                 form.mtl          ? Number(form.mtl)          : null,
+      ref_cliente:         form.ref_cliente  || null,
+      note:                form.note         || null,
+      data_partenza:       form.data_partenza || null,
+      data_arrivo:         form.data_arrivo  || null,
+      targa_semirimorchio: form.targa_semirimorchio || null,
+      stato:               form.stato,
+    })
+    setCreating(null)
+    fetchSpedizioni()
+  }
 
   async function handleSave(form: EditForm) {
     await supabase.from('spedizioni').update({
@@ -615,9 +640,18 @@ export default function KanbanPage() {
                   <p className={`text-[12px] font-bold ${oggi ? 'text-white' : 'text-slate-700'}`}>
                     {GIORNI_IT[day.getDay()]} {day.getDate()} {MESI_IT[day.getMonth()]}
                   </p>
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${oggi ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>
-                    {cards.length}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${oggi ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                      {cards.length}
+                    </span>
+                    <button
+                      onClick={e => { e.stopPropagation(); setCreating(key) }}
+                      className={`w-5 h-5 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${oggi ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-slate-300 hover:bg-blue-600 hover:text-white text-slate-600'}`}
+                      title={`Nuova spedizione ${GIORNI_IT[day.getDay()]} ${day.getDate()}`}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2 flex-1">
@@ -666,12 +700,23 @@ export default function KanbanPage() {
 
       {/* ── Modal modifica ── */}
       {editing && (
-        <EditModal
+        <SpedizioneModal
           spedizione={editing}
           clienti={clienti}
           autisti={autisti}
           onSave={handleSave}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {/* ── Modal nuova spedizione ── */}
+      {creating !== null && (
+        <SpedizioneModal
+          dataPartenzaDefault={creating}
+          clienti={clienti}
+          autisti={autisti}
+          onSave={handleCreate}
+          onClose={() => setCreating(null)}
         />
       )}
 
