@@ -286,25 +286,32 @@ function PreventivoModal({
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(30, 41, 59)
       form.voci.forEach((v, i) => {
-        if (i % 2 === 0) {
-          doc.setFillColor(248, 250, 252)
-          doc.rect(margin, y - 1, colW, 7, 'F')
-        }
         doc.setFontSize(8)
-        const trunc = (s: string, max: number) => s.length > max ? s.slice(0, max - 1) + '…' : s
-        doc.text(trunc(v.carico, 18),      cols[0].x, y + 4.5)
-        doc.text(trunc(v.scarico, 18),     cols[1].x, y + 4.5)
-        doc.text(trunc(v.descrizione, 24), cols[2].x, y + 4.5)
-        doc.text(v.km      || '—', cols[3].x, y + 4.5)
-        doc.text(v.mtl     || '—', cols[4].x, y + 4.5)
-        doc.text(v.peso    || '—', cols[5].x, y + 4.5)
-        doc.text(v.importo ? `€ ${Number(v.importo).toLocaleString('it-IT')}` : '—', cols[6].x, y + 4.5)
-        y += 8
+        const lineH = 4.5
+        const carico      = doc.splitTextToSize(v.carico      || '—', cols[0].w - 2)
+        const scarico     = doc.splitTextToSize(v.scarico     || '—', cols[1].w - 2)
+        const descrizione = doc.splitTextToSize(v.descrizione || '—', cols[2].w - 2)
+        const rowLines = Math.max(carico.length, scarico.length, descrizione.length, 1)
+        const rowH = rowLines * lineH + 4
 
-        if (y > 270) {
+        if (y + rowH > 270) {
           doc.addPage()
           y = margin
         }
+
+        if (i % 2 === 0) {
+          doc.setFillColor(248, 250, 252)
+          doc.rect(margin, y - 1, colW, rowH, 'F')
+        }
+
+        doc.text(carico,      cols[0].x, y + lineH)
+        doc.text(scarico,     cols[1].x, y + lineH)
+        doc.text(descrizione, cols[2].x, y + lineH)
+        doc.text(v.km      || '—', cols[3].x, y + lineH)
+        doc.text(v.mtl     || '—', cols[4].x, y + lineH)
+        doc.text(v.peso    || '—', cols[5].x, y + lineH)
+        doc.text(v.importo ? `€ ${Number(v.importo).toLocaleString('it-IT')}` : '—', cols[6].x, y + lineH)
+        y += rowH
       })
     } else {
       doc.setFontSize(9)
