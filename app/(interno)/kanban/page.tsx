@@ -530,6 +530,18 @@ export default function KanbanPage() {
 
   useEffect(() => { fetchSpedizioni() }, [fetchSpedizioni])
 
+  // Realtime: aggiorna automaticamente quando cambiano i dati
+  useEffect(() => {
+    const channel = supabase
+      .channel('spedizioni-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spedizioni' }, () => {
+        fetchSpedizioni()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchSpedizioni]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleCreate(form: EditForm) {
     await supabase.from('spedizioni').insert({
       cliente_id:          form.cliente_id   ? Number(form.cliente_id)   : null,
