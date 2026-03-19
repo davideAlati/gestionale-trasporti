@@ -204,6 +204,7 @@ function SpedizioneModal({
   clienti,
   autisti,
   onSave,
+  onDelete,
   onClose,
 }: {
   spedizione?: SpedizioneRaw
