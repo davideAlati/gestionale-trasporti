@@ -78,6 +78,7 @@ function DocumentiSection({ autistaId }: { autistaId: number }) {
   const [docs, setDocs] = useState<Documento[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [tipoDoc, setTipoDoc] = useState('Patente')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -101,13 +102,16 @@ function DocumentiSection({ autistaId }: { autistaId: number }) {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
+    setUploadError(null)
 
     const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
     const path = `${autistaId}/${Date.now()}_${file.name}`
 
     const { error: uploadErr } = await supabase.storage.from(BUCKET).upload(path, file)
-    if (!uploadErr) {
-      await supabase.from('documenti').insert({
+    if (uploadErr) {
+      setUploadError(`Storage: ${uploadErr.message}`)
+    } else {
+      const { error: dbErr } = await supabase.from('documenti').insert({
         nome_file:      file.name,
         tipo_documento: tipoDoc,
         formato:        ext,
@@ -116,8 +120,15 @@ function DocumentiSection({ autistaId }: { autistaId: number }) {
         percorso_file:  path,
         dimensione_kb:  Math.round(file.size / 1024),
       })
-      fetchDocs()
+      if (dbErr) {
+        setUploadError(`Database: ${dbErr.message}`)
+        // Rollback file dallo storage
+        await supabase.storage.from(BUCKET).remove([path])
+      } else {
+        fetchDocs()
+      }
     }
+
     setUploading(false)
     if (fileRef.current) fileRef.current.value = ''
   }
@@ -157,6 +168,11 @@ function DocumentiSection({ autistaId }: { autistaId: number }) {
         </button>
         <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleUpload} />
       </div>
+      {uploadError && (
+        <p className="text-[11px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-2">
+          ⚠ {uploadError}
+        </p>
+      )}
 
       {/* Lista documenti */}
       {loading ? (
