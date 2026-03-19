@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ChevronLeft, ChevronRight, Minus, Plus, X, Save, Truck } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Minus, Plus, X, Save } from 'lucide-react'
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
 
@@ -151,24 +151,26 @@ function KanbanCard({
         {spedizione.origine || '—'} → {spedizione.destinazione || '—'}
       </p>
 
-      {/* Autista + Targhe */}
+      {/* Targhe sempre visibili + nome autista solo on hover */}
       {autistaNome ? (
-        <div className="mt-1.5 space-y-1">
+        <div className="mt-1.5">
+          {/* Targa camion + semirimorchio sulla stessa riga */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-slate-500 truncate">{autistaNome}</span>
             {targa && (
-              <span className="flex items-center gap-0.5 text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono shrink-0">
-                <Truck size={8} />
+              <span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono">
                 {targa}
               </span>
             )}
+            {spedizione.targa_semirimorchio && (
+              <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono">
+                {spedizione.targa_semirimorchio}
+              </span>
+            )}
           </div>
-          {spedizione.targa_semirimorchio && (
-            <span className="flex items-center gap-0.5 text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono w-fit">
-              <Truck size={8} />
-              {spedizione.targa_semirimorchio}
-            </span>
-          )}
+          {/* Nome autista visibile solo on hover */}
+          <p className="text-[10px] text-slate-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity italic">
+            {autistaNome}
+          </p>
         </div>
       ) : (
         <p className="text-[10px] text-slate-400 mt-1.5 italic">Autista non assegnato</p>
