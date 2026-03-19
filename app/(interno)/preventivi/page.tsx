@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Search, Plus, X, Save, Trash2, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react'
+import { Search, Plus, X, Save, Trash2, ChevronLeft, ChevronRight, ClipboardList, FileDown } from 'lucide-react'
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
 
@@ -215,6 +215,112 @@ function PreventivoModal({
     setSaving(false)
   }
 
+  async function exportPDF() {
+    const { default: jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+    const clienteNome = clienti.find(c => String(c.id) === form.cliente_id)?.nome ?? '—'
+    const pageW = 210
+    const margin = 18
+    const colW = pageW - margin * 2
+    let y = margin
+
+    // ── Header ──
+    doc.setFillColor(30, 58, 138) // blue-900
+    doc.rect(0, 0, pageW, 28, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`PREVENTIVO #${preventivo?.id ?? '—'}`, margin, 12)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Data: ${fmtData(form.data)}   Stato: ${form.stato}`, margin, 20)
+    y = 36
+
+    // ── Cliente ──
+    doc.setTextColor(30, 41, 59)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Cliente', margin, y)
+    doc.setFont('helvetica', 'normal')
+    doc.text(clienteNome, margin + 22, y)
+    y += 7
+
+    // ── Note ──
+    if (form.descrizione.trim()) {
+      doc.setFont('helvetica', 'bold')
+      doc.text('Note', margin, y)
+      doc.setFont('helvetica', 'normal')
+      const noteLines = doc.splitTextToSize(form.descrizione, colW - 22)
+      doc.text(noteLines, margin + 22, y)
+      y += noteLines.length * 5 + 3
+    }
+
+    y += 4
+    // ── Separatore ──
+    doc.setDrawColor(203, 213, 225)
+    doc.line(margin, y, pageW - margin, y)
+    y += 6
+
+    // ── Intestazione tabella voci ──
+    if (form.voci.length > 0) {
+      doc.setFillColor(241, 245, 249) // slate-100
+      doc.rect(margin, y - 1, colW, 7, 'F')
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(100, 116, 139)
+
+      const cols = [
+        { label: 'Carico',      x: margin,       w: 34 },
+        { label: 'Scarico',     x: margin + 34,  w: 34 },
+        { label: 'Descrizione', x: margin + 68,  w: 48 },
+        { label: 'KM',          x: margin + 116, w: 16 },
+        { label: 'MTL',         x: margin + 132, w: 16 },
+        { label: 'Peso (kg)',   x: margin + 148, w: 20 },
+        { label: 'Importo €',   x: margin + 168, w: 24 },
+      ]
+      cols.forEach(c => doc.text(c.label, c.x, y + 4.5))
+      y += 9
+
+      // ── Righe voci ──
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(30, 41, 59)
+      form.voci.forEach((v, i) => {
+        if (i % 2 === 0) {
+          doc.setFillColor(248, 250, 252)
+          doc.rect(margin, y - 1, colW, 7, 'F')
+        }
+        doc.setFontSize(8)
+        const trunc = (s: string, max: number) => s.length > max ? s.slice(0, max - 1) + '…' : s
+        doc.text(trunc(v.carico, 18),      cols[0].x, y + 4.5)
+        doc.text(trunc(v.scarico, 18),     cols[1].x, y + 4.5)
+        doc.text(trunc(v.descrizione, 24), cols[2].x, y + 4.5)
+        doc.text(v.km      || '—', cols[3].x, y + 4.5)
+        doc.text(v.mtl     || '—', cols[4].x, y + 4.5)
+        doc.text(v.peso    || '—', cols[5].x, y + 4.5)
+        doc.text(v.importo ? `€ ${Number(v.importo).toLocaleString('it-IT')}` : '—', cols[6].x, y + 4.5)
+        y += 8
+
+        if (y > 270) {
+          doc.addPage()
+          y = margin
+        }
+      })
+    } else {
+      doc.setFontSize(9)
+      doc.setTextColor(148, 163, 184)
+      doc.text('Nessuna voce inserita', margin, y + 4)
+      y += 12
+    }
+
+    // ── Footer pagina ──
+    doc.setFontSize(7)
+    doc.setTextColor(148, 163, 184)
+    doc.text(`Generato il ${new Date().toLocaleDateString('it-IT')}`, margin, 290)
+
+    doc.save(`preventivo_${preventivo?.id ?? 'nuovo'}_${clienteNome.replace(/\s+/g, '_')}.pdf`)
+  }
+
   const input = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
 
   return (
@@ -328,6 +434,12 @@ function PreventivoModal({
             )}
           </div>
           <div className="flex items-center gap-2">
+            {!isNew && (
+              <button onClick={exportPDF}
+                className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 text-sm font-semibold rounded-xl transition-colors border border-slate-200">
+                <FileDown size={14} /> PDF
+              </button>
+            )}
             <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition-colors">Annulla</button>
             <button onClick={handleSave} disabled={saving}
               className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
