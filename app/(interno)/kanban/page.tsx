@@ -582,6 +582,8 @@ export default function KanbanPage() {
     const email = spedizione.clienti?.email
     if (!email) return
     const targaCamion = targaByAutista[Number(form.autista_id)] ?? null
+    const autista = autisti.find(a => a.id === Number(form.autista_id))
+    const autistaNome = autista ? `${autista.cognome ?? ''} ${autista.nome ?? ''}`.trim() : null
     await fetch('/api/notify-spedizione', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -593,6 +595,7 @@ export default function KanbanPage() {
         destinazione:        form.destinazione || null,
         data_partenza:       form.data_partenza || null,
         nuovo_stato:         nuovoStato,
+        autista_nome:        autistaNome,
         targa_camion:        targaCamion,
         targa_semirimorchio: form.targa_semirimorchio || null,
       }),

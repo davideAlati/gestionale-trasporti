@@ -19,7 +19,7 @@ function fmtData(d: string | null) {
 
 function emailHtml({
   cliente_nome, ref_cliente, origine, destinazione,
-  data_partenza, nuovo_stato, targa_camion, targa_semirimorchio,
+  data_partenza, nuovo_stato, autista_nome, targa_camion, targa_semirimorchio,
 }: {
   cliente_nome: string
   ref_cliente: string | null
@@ -27,11 +27,13 @@ function emailHtml({
   destinazione: string | null
   data_partenza: string | null
   nuovo_stato: string
+  autista_nome: string | null
   targa_camion: string | null
   targa_semirimorchio: string | null
 }) {
   const colore = STATO_COLORI[nuovo_stato] ?? '#334155'
   const tratta = origine && destinazione ? `${origine} → ${destinazione}` : origine ?? destinazione ?? '—'
+  const headerTitle = ref_cliente ? `Aggiornamento Spedizione — ${ref_cliente}` : 'Aggiornamento Spedizione'
 
   return `<!DOCTYPE html>
 <html lang="it">
@@ -45,7 +47,7 @@ function emailHtml({
         <tr>
           <td style="background:#1e3a8a;padding:28px 32px;">
             <p style="margin:0;color:#93c5fd;font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">Gestionale Trasporti</p>
-            <h1 style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:bold;">Aggiornamento Spedizione</h1>
+            <h1 style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:bold;">${headerTitle}</h1>
           </td>
         </tr>
 
@@ -95,14 +97,15 @@ function emailHtml({
                   <p style="margin:4px 0 0;color:#1e293b;font-size:14px;">${fmtData(data_partenza)}</p>
                 </td>
               </tr>
-              ${targa_camion || targa_semirimorchio ? `
+              ${autista_nome || targa_camion || targa_semirimorchio ? `
               <tr>
                 <td style="padding:12px 16px;">
                   <span style="color:#94a3b8;font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">Veicoli</span>
-                  <p style="margin:4px 0 0;color:#1e293b;font-size:14px;font-family:monospace;">
-                    ${targa_camion ? `<strong>${targa_camion}</strong>` : ''}
-                    ${targa_camion && targa_semirimorchio ? ' &nbsp;+&nbsp; ' : ''}
-                    ${targa_semirimorchio ? targa_semirimorchio : ''}
+                  <p style="margin:4px 0 0;color:#1e293b;font-size:14px;">
+                    ${autista_nome ? `<strong>${autista_nome}</strong>` : ''}
+                    ${autista_nome && targa_camion ? '&nbsp;' : ''}
+                    ${targa_camion ? `<span style="font-family:monospace;background:#1e293b;color:#fff;padding:2px 6px;border-radius:4px;">${targa_camion}</span>` : ''}
+                    ${targa_semirimorchio ? ` / <span style="font-family:monospace;">${targa_semirimorchio}</span>` : ''}
                   </p>
                 </td>
               </tr>` : ''}
@@ -133,7 +136,7 @@ export async function POST(req: NextRequest) {
     const {
       cliente_email, cliente_nome, ref_cliente,
       origine, destinazione, data_partenza,
-      nuovo_stato, targa_camion, targa_semirimorchio,
+      nuovo_stato, autista_nome, targa_camion, targa_semirimorchio,
     } = body
 
     if (!cliente_email) {
@@ -143,11 +146,12 @@ export async function POST(req: NextRequest) {
     const { error } = await resend.emails.send({
       from: FROM,
       to: cliente_email,
-      subject: `Aggiornamento spedizione${ref_cliente ? ` #${ref_cliente}` : ''} — ${nuovo_stato}`,
+      subject: `Aggiornamento Spedizione${ref_cliente ? ` ${ref_cliente}` : ''} — ${nuovo_stato}`,
       html: emailHtml({
         cliente_nome: cliente_nome ?? 'Cliente',
         ref_cliente, origine, destinazione,
         data_partenza, nuovo_stato,
+        autista_nome: autista_nome ?? null,
         targa_camion, targa_semirimorchio,
       }),
     })
