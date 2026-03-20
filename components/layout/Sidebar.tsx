@@ -11,7 +11,7 @@ import {
   Wrench,
   FolderOpen,
   ClipboardList,
-  Car,
+  HardHat,
   UserCog,
 } from 'lucide-react'
 import {
@@ -27,8 +27,8 @@ const navItems = [
   { href: '/kanban', icon: Package, label: 'Kanban Spedizioni' },
   { href: '/spedizioni', icon: List, label: 'Spedizioni' },
   { href: '/clienti', icon: Users, label: 'Clienti' },
-  { href: '/autisti', icon: Truck, label: 'Autisti' },
-  { href: '/veicoli', icon: Car, label: 'Veicoli' },
+  { href: '/autisti', icon: HardHat, label: 'Autisti' },
+  { href: '/veicoli', icon: Truck, label: 'Veicoli' },
   { href: '/manutenzioni', icon: Wrench, label: 'Manutenzioni' },
   { href: '/preventivi', icon: ClipboardList, label: 'Preventivi' },
   { href: '/documenti', icon: FolderOpen, label: 'Documenti' },
