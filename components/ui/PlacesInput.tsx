@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react'
 
 declare global {
   interface Window {
-    google: typeof google
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    google: any
     initGoogleMapsPlaces?: () => void
   }
 }
@@ -44,7 +45,7 @@ export function PlacesInput({
   className?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const acRef   = useRef<google.maps.places.Autocomplete | null>(null)
+  const acRef   = useRef<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
   const apiKey  = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''
 
   useEffect(() => {
