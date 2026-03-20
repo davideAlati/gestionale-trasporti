@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev'
 
 const STATO_COLORI: Record<string, string> = {
@@ -129,6 +128,10 @@ function emailHtml({
 
 export async function POST(req: NextRequest) {
   try {
+    const apiKey = process.env.RESEND_API_KEY
+    console.log('RESEND_API_KEY present:', !!apiKey, 'length:', apiKey?.length, 'starts with re_:', apiKey?.startsWith('re_'))
+
+    const resend = new Resend(apiKey)
     const body = await req.json()
     const {
       cliente_email, cliente_nome, ref_cliente,
