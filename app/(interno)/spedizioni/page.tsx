@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Search, Plus, X, Save, Trash2, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react'
+import { PlacesInput } from '@/components/ui/PlacesInput'
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
 
@@ -204,11 +205,11 @@ function SpedizioneModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Carico</label>
-              <input type="text" value={form.origine} onChange={e => setForm(f => ({ ...f, origine: e.target.value }))} placeholder="Città di partenza" className={input} />
+              <PlacesInput value={form.origine} onChange={v => setForm(f => ({ ...f, origine: v }))} placeholder="Città di partenza" className={input} />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Scarico</label>
-              <input type="text" value={form.destinazione} onChange={e => setForm(f => ({ ...f, destinazione: e.target.value }))} placeholder="Città di arrivo" className={input} />
+              <PlacesInput value={form.destinazione} onChange={v => setForm(f => ({ ...f, destinazione: v }))} placeholder="Città di arrivo" className={input} />
             </div>
           </div>
 

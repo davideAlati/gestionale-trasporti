@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, ChevronRight, Minus, Plus, X, Save, Trash2, Printer } from 'lucide-react'
+import { PlacesInput } from '@/components/ui/PlacesInput'
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
 
@@ -348,20 +349,18 @@ function SpedizioneModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Carico</label>
-              <input
-                type="text"
+              <PlacesInput
                 value={form.origine}
-                onChange={e => setForm(f => ({ ...f, origine: e.target.value }))}
+                onChange={v => setForm(f => ({ ...f, origine: v }))}
                 placeholder="Città di partenza"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Scarico</label>
-              <input
-                type="text"
+              <PlacesInput
                 value={form.destinazione}
-                onChange={e => setForm(f => ({ ...f, destinazione: e.target.value }))}
+                onChange={v => setForm(f => ({ ...f, destinazione: v }))}
                 placeholder="Città di arrivo"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
