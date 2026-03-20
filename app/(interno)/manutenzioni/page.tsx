@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, Save, Trash2, Wrench, ChevronRight } from 'lucide-react'
+import { Plus, X, Save, Trash2, Wrench, ChevronRight, ClipboardCheck, ArrowRightCircle } from 'lucide-react'
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +28,16 @@ type Manutenzione = {
   created_at: string
 }
 
+type Promemoria = {
+  id: number
+  veicolo_id: number
+  titolo: string
+  descrizione: string | null
+  priorita: 'alta' | 'media' | 'bassa'
+  completato: boolean
+  created_at: string
+}
+
 type Form = {
   data_intervento: string
   tipologia_intervento: string
@@ -35,6 +45,12 @@ type Form = {
   fornitore: string
   costo: string
   descrizione: string
+}
+
+type PromemoriaForm = {
+  titolo: string
+  descrizione: string
+  priorita: 'alta' | 'media' | 'bassa'
 }
 
 const TIPOLOGIE = ['Tagliando', 'Pneumatici', 'Freni', 'Elettrico', 'Carrozzeria', 'Revisione', 'Altro']
@@ -46,6 +62,12 @@ const EMPTY_FORM: Form = {
   fornitore: '',
   costo: '',
   descrizione: '',
+}
+
+const PRIORITA_CONFIG = {
+  alta:  { label: 'Alta',  badge: 'bg-red-50 text-red-700 border-red-200',       dot: 'bg-red-500'   },
+  media: { label: 'Media', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  bassa: { label: 'Bassa', badge: 'bg-green-50 text-green-700 border-green-200', dot: 'bg-green-500' },
 }
 
 // ─── Utilità ─────────────────────────────────────────────────────────────────
@@ -119,11 +141,12 @@ function FornitoreInput({
 // ─── Modal manutenzione ───────────────────────────────────────────────────────
 
 function ManutenzioneModal({
-  targa, manutenzione, fornitori, onSave, onDelete, onClose,
+  targa, manutenzione, fornitori, initialForm, onSave, onDelete, onClose,
 }: {
   targa: string
   manutenzione?: Manutenzione
   fornitori: string[]
+  initialForm?: Partial<Form>
   onSave: (form: Form) => Promise<void>
   onDelete?: () => Promise<void>
   onClose: () => void
@@ -131,13 +154,13 @@ function ManutenzioneModal({
   const isNew = !manutenzione
   const [form, setForm] = useState<Form>(
     manutenzione ? {
-      data_intervento:     manutenzione.data_intervento,
+      data_intervento:      manutenzione.data_intervento,
       tipologia_intervento: manutenzione.tipologia_intervento ?? TIPOLOGIE[0],
       km:          manutenzione.km != null ? String(manutenzione.km) : '',
       fornitore:   manutenzione.fornitore ?? '',
       costo:       manutenzione.costo != null ? String(manutenzione.costo) : '',
       descrizione: manutenzione.descrizione ?? '',
-    } : { ...EMPTY_FORM }
+    } : { ...EMPTY_FORM, ...initialForm }
   )
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -154,7 +177,6 @@ function ManutenzioneModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-amber-50 rounded-full flex items-center justify-center">
@@ -169,10 +191,7 @@ function ManutenzioneModal({
           </button>
         </div>
 
-        {/* Form */}
         <div className="px-5 py-4 space-y-3.5">
-
-          {/* Data */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Data intervento *</label>
             <input type="date" value={form.data_intervento}
@@ -180,7 +199,6 @@ function ManutenzioneModal({
               className={input} />
           </div>
 
-          {/* Tipologia */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Tipologia</label>
             <div className="flex flex-wrap gap-1.5">
@@ -197,7 +215,6 @@ function ManutenzioneModal({
             </div>
           </div>
 
-          {/* KM / Costo */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">KM al momento</label>
@@ -211,13 +228,11 @@ function ManutenzioneModal({
             </div>
           </div>
 
-          {/* Fornitore */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Fornitore</label>
             <FornitoreInput value={form.fornitore} onChange={v => setForm(f => ({ ...f, fornitore: v }))} fornitori={fornitori} />
           </div>
 
-          {/* Descrizione */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Descrizione</label>
             <textarea value={form.descrizione} onChange={e => setForm(f => ({ ...f, descrizione: e.target.value }))}
@@ -226,7 +241,6 @@ function ManutenzioneModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
           <div>
             {!isNew && onDelete && (
@@ -262,19 +276,148 @@ function ManutenzioneModal({
   )
 }
 
+// ─── Modal promemoria ─────────────────────────────────────────────────────────
+
+function PromemoriaModal({
+  targa, promemoria, onSave, onDelete, onClose,
+}: {
+  targa: string
+  promemoria?: Promemoria
+  onSave: (form: PromemoriaForm) => Promise<void>
+  onDelete?: () => Promise<void>
+  onClose: () => void
+}) {
+  const isNew = !promemoria
+  const [form, setForm] = useState<PromemoriaForm>({
+    titolo:      promemoria?.titolo ?? '',
+    descrizione: promemoria?.descrizione ?? '',
+    priorita:    promemoria?.priorita ?? 'media',
+  })
+  const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const input = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
+
+  async function handleSave() {
+    setSaving(true)
+    await onSave(form)
+    setSaving(false)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center">
+              <ClipboardCheck size={15} className="text-blue-600" />
+            </div>
+            <h2 className="text-[15px] font-bold text-slate-800">
+              {isNew ? `Nuovo promemoria — ${targa}` : `Modifica promemoria — ${targa}`}
+            </h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-3.5">
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Titolo *</label>
+            <input type="text" value={form.titolo}
+              onChange={e => setForm(f => ({ ...f, titolo: e.target.value }))}
+              placeholder="Es. Cambio olio prossimo tagliando"
+              className={input} />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Priorità</label>
+            <div className="flex gap-2">
+              {(['alta', 'media', 'bassa'] as const).map(p => {
+                const cfg = PRIORITA_CONFIG[p]
+                return (
+                  <button key={p} onClick={() => setForm(f => ({ ...f, priorita: p }))}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all ${
+                      form.priorita === p ? cfg.badge : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                    }`}>
+                    <div className={`w-2 h-2 rounded-full ${form.priorita === p ? cfg.dot : 'bg-slate-300'}`} />
+                    {cfg.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Note</label>
+            <textarea value={form.descrizione}
+              onChange={e => setForm(f => ({ ...f, descrizione: e.target.value }))}
+              placeholder="Dettagli aggiuntivi…" rows={3}
+              className={`${input} resize-none`} />
+          </div>
+        </div>
+
+        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
+          <div>
+            {!isNew && onDelete && (
+              confirmDelete ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] text-red-600 font-semibold">Confermi eliminazione?</span>
+                  <button onClick={onDelete} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors">
+                    Sì, elimina
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)} className="px-3 py-1.5 text-slate-500 text-xs hover:text-slate-700 transition-colors">
+                    Annulla
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 text-xs font-semibold rounded-lg transition-colors">
+                  <Trash2 size={13} /> Elimina
+                </button>
+              )
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition-colors">Annulla</button>
+            <button onClick={handleSave} disabled={saving || !form.titolo.trim()}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
+              <Save size={14} />
+              {saving ? 'Salvataggio...' : isNew ? 'Crea' : 'Salva'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Pagina principale ────────────────────────────────────────────────────────
 
 export default function ManutenzioniPage() {
   const supabase = createClient()
 
-  const [veicoli, setVeicoli] = useState<Veicolo[]>([])
-  const [selected, setSelected] = useState<Veicolo | null>(null)
-  const [manutenzioni, setManutenzioni] = useState<Manutenzione[]>([])
-  const [fornitori, setFornitori] = useState<string[]>([])
+  const [tab, setTab] = useState<'manutenzioni' | 'promemoria'>('manutenzioni')
+
+  // Veicoli
+  const [veicoli, setVeicoli]             = useState<Veicolo[]>([])
+  const [selected, setSelected]           = useState<Veicolo | null>(null)
   const [loadingVeicoli, setLoadingVeicoli] = useState(true)
-  const [loadingManu, setLoadingManu] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editing, setEditing] = useState<Manutenzione | null>(null)
+
+  // Manutenzioni
+  const [manutenzioni, setManutenzioni]   = useState<Manutenzione[]>([])
+  const [fornitori, setFornitori]         = useState<string[]>([])
+  const [loadingManu, setLoadingManu]     = useState(false)
+  const [modalOpen, setModalOpen]         = useState(false)
+  const [editing, setEditing]             = useState<Manutenzione | null>(null)
+
+  // Promemoria
+  const [promemoria, setPromemoria]       = useState<Promemoria[]>([])
+  const [loadingProm, setLoadingProm]     = useState(false)
+  const [promodalOpen, setPromodalOpen]   = useState(false)
+  const [editingProm, setEditingProm]     = useState<Promemoria | null>(null)
+  const [convertingProm, setConvertingProm] = useState<Promemoria | null>(null)
 
   // Fetch veicoli
   useEffect(() => {
@@ -309,10 +452,25 @@ export default function ManutenzioniPage() {
     setLoadingManu(false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const fetchPromemoria = useCallback(async (veicoloId: number) => {
+    setLoadingProm(true)
+    const { data } = await supabase
+      .from('promemoria')
+      .select('*')
+      .eq('veicolo_id', veicoloId)
+      .order('completato', { ascending: true })
+      .order('created_at', { ascending: false })
+    setPromemoria((data ?? []) as Promemoria[])
+    setLoadingProm(false)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   function selectVeicolo(v: Veicolo) {
     setSelected(v)
     fetchManutenzioni(v.targa)
+    fetchPromemoria(v.id)
   }
+
+  // ── Manutenzioni CRUD ──────────────────────────────────────────────────────
 
   async function handleCreate(form: Form) {
     if (!selected) return
@@ -320,14 +478,13 @@ export default function ManutenzioniPage() {
       targa:                selected.targa,
       data_intervento:      form.data_intervento,
       tipologia_intervento: form.tipologia_intervento,
-      km:                   form.km       ? Number(form.km)   : null,
-      costo:                form.costo    ? Number(form.costo) : null,
+      km:                   form.km    ? Number(form.km)    : null,
+      costo:                form.costo ? Number(form.costo) : null,
       fornitore:            form.fornitore || null,
       descrizione:          form.descrizione || null,
     })
     setModalOpen(false)
     fetchManutenzioni(selected.targa)
-    // Aggiorna fornitori con eventuale nuovo fornitore
     if (form.fornitore && !fornitori.includes(form.fornitore)) {
       setFornitori(prev => [...prev, form.fornitore].sort())
     }
@@ -338,8 +495,8 @@ export default function ManutenzioniPage() {
     await supabase.from('manutenzioni').update({
       data_intervento:      form.data_intervento,
       tipologia_intervento: form.tipologia_intervento,
-      km:                   form.km       ? Number(form.km)   : null,
-      costo:                form.costo    ? Number(form.costo) : null,
+      km:                   form.km    ? Number(form.km)    : null,
+      costo:                form.costo ? Number(form.costo) : null,
       fornitore:            form.fornitore || null,
       descrizione:          form.descrizione || null,
     }).eq('id', editing.id)
@@ -357,7 +514,64 @@ export default function ManutenzioniPage() {
     fetchManutenzioni(selected.targa)
   }
 
+  // ── Promemoria CRUD ────────────────────────────────────────────────────────
+
+  async function handleCreateProm(form: PromemoriaForm) {
+    if (!selected) return
+    await supabase.from('promemoria').insert({
+      veicolo_id:  selected.id,
+      titolo:      form.titolo,
+      descrizione: form.descrizione || null,
+      priorita:    form.priorita,
+    })
+    setPromodalOpen(false)
+    fetchPromemoria(selected.id)
+  }
+
+  async function handleSaveProm(form: PromemoriaForm) {
+    if (!editingProm) return
+    await supabase.from('promemoria').update({
+      titolo:      form.titolo,
+      descrizione: form.descrizione || null,
+      priorita:    form.priorita,
+    }).eq('id', editingProm.id)
+    setEditingProm(null)
+    if (selected) fetchPromemoria(selected.id)
+  }
+
+  async function handleDeleteProm() {
+    if (!editingProm || !selected) return
+    await supabase.from('promemoria').delete().eq('id', editingProm.id)
+    setEditingProm(null)
+    fetchPromemoria(selected.id)
+  }
+
+  async function toggleCompletato(p: Promemoria) {
+    await supabase.from('promemoria').update({ completato: !p.completato }).eq('id', p.id)
+    if (selected) fetchPromemoria(selected.id)
+  }
+
+  // Converte promemoria in manutenzione e lo segna completato
+  async function handleConvertSave(form: Form) {
+    if (!selected || !convertingProm) return
+    await supabase.from('manutenzioni').insert({
+      targa:                selected.targa,
+      data_intervento:      form.data_intervento,
+      tipologia_intervento: form.tipologia_intervento,
+      km:                   form.km    ? Number(form.km)    : null,
+      costo:                form.costo ? Number(form.costo) : null,
+      fornitore:            form.fornitore || null,
+      descrizione:          form.descrizione || null,
+    })
+    await supabase.from('promemoria').update({ completato: true }).eq('id', convertingProm.id)
+    setConvertingProm(null)
+    fetchManutenzioni(selected.targa)
+    fetchPromemoria(selected.id)
+    setTab('manutenzioni')
+  }
+
   const costoTotale = manutenzioni.reduce((acc, m) => acc + (m.costo ?? 0), 0)
+  const promAperti  = promemoria.filter(p => !p.completato).length
 
   return (
     <div className="flex gap-4 h-[calc(100vh-5rem)]">
@@ -390,7 +604,7 @@ export default function ManutenzioniPage() {
         ))}
       </div>
 
-      {/* ── Pannello destro: interventi ── */}
+      {/* ── Pannello destro ── */}
       <div className="flex-1 flex flex-col min-w-0">
         {!selected ? (
           <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center justify-center">
@@ -401,71 +615,197 @@ export default function ManutenzioniPage() {
           </div>
         ) : (
           <>
-            {/* Header pannello destro */}
+            {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-lg font-bold text-slate-800">
                   {selected.targa} — {selected.marca} {selected.modello}
                 </h1>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {manutenzioni.length} interventi · Costo totale: <span className="font-semibold text-slate-600">{fmtCosto(costoTotale)}</span>
+                  {tab === 'manutenzioni'
+                    ? <>{manutenzioni.length} interventi · Costo totale: <span className="font-semibold text-slate-600">{fmtCosto(costoTotale)}</span></>
+                    : <>{promAperti} promemoria aperti · {promemoria.length - promAperti} completati</>
+                  }
                 </p>
               </div>
-              <button onClick={() => setModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-xl transition-colors">
-                <Plus size={15} /> Nuovo intervento
-              </button>
-            </div>
 
-            {/* Tabella interventi */}
-            <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="overflow-auto h-full">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-100 bg-slate-50">
-                      <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Data</th>
-                      <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Tipologia</th>
-                      <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">KM</th>
-                      <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Fornitore</th>
-                      <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Costo</th>
-                      <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Descrizione</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadingManu ? (
-                      Array.from({ length: 4 }).map((_, i) => (
-                        <tr key={i} className="border-b border-slate-50">
-                          {Array.from({ length: 6 }).map((_, j) => (
-                            <td key={j} className="px-4 py-3.5"><div className="h-3 bg-slate-100 rounded animate-pulse w-3/4" /></td>
-                          ))}
-                        </tr>
-                      ))
-                    ) : manutenzioni.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-16 text-center">
-                          <Wrench size={28} className="mx-auto text-slate-200 mb-2" />
-                          <p className="text-slate-400 text-sm">Nessun intervento registrato</p>
-                        </td>
-                      </tr>
-                    ) : manutenzioni.map(m => (
-                      <tr key={m.id} onClick={() => setEditing(m)}
-                        className="border-b border-slate-50 hover:bg-blue-50/40 cursor-pointer transition-colors">
-                        <td className="px-4 py-3.5 text-slate-700 font-semibold text-xs whitespace-nowrap">{fmtData(m.data_intervento)}</td>
-                        <td className="px-4 py-3.5">
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
-                            {m.tipologia_intervento ?? '—'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-500 text-xs">{fmtKm(m.km)}</td>
-                        <td className="px-4 py-3.5 text-slate-600 text-xs">{m.fornitore ?? '—'}</td>
-                        <td className="px-4 py-3.5 text-slate-700 text-xs font-semibold">{fmtCosto(m.costo)}</td>
-                        <td className="px-4 py-3.5 text-slate-400 text-xs max-w-xs truncate">{m.descrizione ?? '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="flex items-center gap-3">
+                {/* Tab switcher */}
+                <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+                  <button onClick={() => setTab('manutenzioni')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      tab === 'manutenzioni' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}>
+                    <Wrench size={12} /> Manutenzioni
+                  </button>
+                  <button onClick={() => setTab('promemoria')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      tab === 'promemoria' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}>
+                    <ClipboardCheck size={12} /> Promemoria
+                    {promAperti > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                        {promAperti}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Action button */}
+                {tab === 'manutenzioni' ? (
+                  <button onClick={() => setModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-xl transition-colors">
+                    <Plus size={15} /> Nuovo intervento
+                  </button>
+                ) : (
+                  <button onClick={() => setPromodalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-xl transition-colors">
+                    <Plus size={15} /> Nuovo promemoria
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* ── Tab: Manutenzioni ── */}
+            {tab === 'manutenzioni' && (
+              <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="overflow-auto h-full">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="border-b border-slate-100 bg-slate-50">
+                        <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Data</th>
+                        <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Tipologia</th>
+                        <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">KM</th>
+                        <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Fornitore</th>
+                        <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Costo</th>
+                        <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Descrizione</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loadingManu ? (
+                        Array.from({ length: 4 }).map((_, i) => (
+                          <tr key={i} className="border-b border-slate-50">
+                            {Array.from({ length: 6 }).map((_, j) => (
+                              <td key={j} className="px-4 py-3.5"><div className="h-3 bg-slate-100 rounded animate-pulse w-3/4" /></td>
+                            ))}
+                          </tr>
+                        ))
+                      ) : manutenzioni.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-16 text-center">
+                            <Wrench size={28} className="mx-auto text-slate-200 mb-2" />
+                            <p className="text-slate-400 text-sm">Nessun intervento registrato</p>
+                          </td>
+                        </tr>
+                      ) : manutenzioni.map(m => (
+                        <tr key={m.id} onClick={() => setEditing(m)}
+                          className="border-b border-slate-50 hover:bg-blue-50/40 cursor-pointer transition-colors">
+                          <td className="px-4 py-3.5 text-slate-700 font-semibold text-xs whitespace-nowrap">{fmtData(m.data_intervento)}</td>
+                          <td className="px-4 py-3.5">
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
+                              {m.tipologia_intervento ?? '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 text-slate-500 text-xs">{fmtKm(m.km)}</td>
+                          <td className="px-4 py-3.5 text-slate-600 text-xs">{m.fornitore ?? '—'}</td>
+                          <td className="px-4 py-3.5 text-slate-700 text-xs font-semibold">{fmtCosto(m.costo)}</td>
+                          <td className="px-4 py-3.5 text-slate-400 text-xs max-w-xs truncate">{m.descrizione ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ── Tab: Promemoria ── */}
+            {tab === 'promemoria' && (
+              <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="overflow-auto h-full">
+                  {loadingProm ? (
+                    <div className="p-4 space-y-2">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : promemoria.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full py-16">
+                      <ClipboardCheck size={28} className="text-slate-200 mb-2" />
+                      <p className="text-slate-400 text-sm">Nessun promemoria</p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="border-b border-slate-100 bg-slate-50">
+                          <th className="px-4 py-3 w-8" />
+                          <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Priorità</th>
+                          <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Titolo</th>
+                          <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Note</th>
+                          <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Creato il</th>
+                          <th className="px-4 py-3" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {promemoria.map(p => {
+                          const cfg = PRIORITA_CONFIG[p.priorita]
+                          return (
+                            <tr key={p.id}
+                              className={`border-b border-slate-50 transition-colors ${p.completato ? 'opacity-50 bg-slate-50/60' : 'hover:bg-blue-50/40'}`}>
+                              {/* Checkbox */}
+                              <td className="px-4 py-3.5">
+                                <input
+                                  type="checkbox"
+                                  checked={p.completato}
+                                  onChange={() => toggleCompletato(p)}
+                                  className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                                />
+                              </td>
+                              {/* Priorità */}
+                              <td className="px-4 py-3.5">
+                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfg.badge}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                                  {cfg.label}
+                                </span>
+                              </td>
+                              {/* Titolo */}
+                              <td className="px-4 py-3.5">
+                                <p className={`text-sm font-semibold ${p.completato ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                                  {p.titolo}
+                                </p>
+                              </td>
+                              {/* Note */}
+                              <td className="px-4 py-3.5 text-slate-400 text-xs max-w-xs truncate">{p.descrizione ?? '—'}</td>
+                              {/* Data */}
+                              <td className="px-4 py-3.5 text-slate-400 text-xs whitespace-nowrap">
+                                {fmtData(p.created_at.slice(0, 10))}
+                              </td>
+                              {/* Azioni */}
+                              <td className="px-4 py-3.5">
+                                <div className="flex items-center gap-1 justify-end">
+                                  {!p.completato && (
+                                    <button
+                                      onClick={() => setConvertingProm(p)}
+                                      title="Converti in manutenzione"
+                                      className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-[10px] font-bold rounded-lg transition-colors whitespace-nowrap">
+                                      <ArrowRightCircle size={12} /> Converti
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => setEditingProm(p)}
+                                    className="px-2.5 py-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 text-[10px] rounded-lg transition-colors">
+                                    Modifica
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -489,6 +829,37 @@ export default function ManutenzioniPage() {
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {/* Modal nuovo promemoria */}
+      {promodalOpen && selected && (
+        <PromemoriaModal
+          targa={selected.targa}
+          onSave={handleCreateProm}
+          onClose={() => setPromodalOpen(false)}
+        />
+      )}
+
+      {/* Modal modifica promemoria */}
+      {editingProm && selected && (
+        <PromemoriaModal
+          targa={selected.targa}
+          promemoria={editingProm}
+          onSave={handleSaveProm}
+          onDelete={handleDeleteProm}
+          onClose={() => setEditingProm(null)}
+        />
+      )}
+
+      {/* Modal converti in manutenzione */}
+      {convertingProm && selected && (
+        <ManutenzioneModal
+          targa={selected.targa}
+          fornitori={fornitori}
+          initialForm={{ descrizione: convertingProm.titolo }}
+          onSave={handleConvertSave}
+          onClose={() => setConvertingProm(null)}
         />
       )}
     </div>

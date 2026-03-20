@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Package, AlertCircle, Wrench, CalendarClock } from 'lucide-react'
+import { Package, AlertCircle, Wrench, CalendarClock, ClipboardCheck } from 'lucide-react'
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +15,14 @@ type Spedizione = {
   clienti: { nome: string } | null
   origine: string | null
   destinazione: string | null
+}
+
+type Promemoria = {
+  id: number
+  titolo: string
+  priorita: 'alta' | 'media' | 'bassa'
+  created_at: string
+  veicoli: { targa: string } | null
 }
 
 type Manutenzione = {
@@ -43,6 +51,14 @@ function fmtData(d: string) {
 function fmtCosto(c: number | null) {
   if (c == null) return ''
   return c.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })
+}
+
+// ─── Configurazione priorità promemoria ──────────────────────────────────────
+
+const PRIORITA_CONFIG = {
+  alta:  { label: 'Alta',  badge: 'bg-red-50 text-red-700',       dot: 'bg-red-500'   },
+  media: { label: 'Media', badge: 'bg-amber-50 text-amber-700',   dot: 'bg-amber-500' },
+  bassa: { label: 'Bassa', badge: 'bg-green-50 text-green-700',   dot: 'bg-green-500' },
 }
 
 // ─── Configurazione stati spedizione ─────────────────────────────────────────
@@ -87,6 +103,7 @@ export default function DashboardPage() {
   const [nonAssegnatiOggi, setNonAssegnatiOggi] = useState(0)
   const [manutenzioni, setManutenzioni] = useState<Manutenzione[]>([])
   const [prossimiCarichi, setProssimiCarichi] = useState<Spedizione[]>([])
+  const [promemoria, setPromemoria] = useState<Promemoria[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -109,7 +126,7 @@ export default function DashboardPage() {
       dopodomani.setDate(oggi.getDate() + 2)
       const dopodomaniStr = toDateStr(dopodomani)
 
-      const [resSettimana, resManutenzioni, resProssimiCarichi, resNonAssegnati] = await Promise.all([
+      const [resSettimana, resManutenzioni, resProssimiCarichi, resNonAssegnati, resPromemoria] = await Promise.all([
         // Spedizioni della settimana
         supabase
           .from('spedizioni')
@@ -139,6 +156,13 @@ export default function DashboardPage() {
           .select('id', { count: 'exact', head: true })
           .eq('stato', 'Non Assegnato')
           .eq('data_partenza', oggiStr),
+
+        // Promemoria aperti
+        supabase
+          .from('promemoria')
+          .select('id, titolo, priorita, created_at, veicoli(targa)')
+          .eq('completato', false)
+          .order('created_at', { ascending: false }),
       ])
 
       const settimana = (resSettimana.data ?? []) as unknown as Spedizione[]
@@ -146,6 +170,11 @@ export default function DashboardPage() {
       setNonAssegnatiOggi(resNonAssegnati.count ?? 0)
       setManutenzioni((resManutenzioni.data ?? []) as Manutenzione[])
       setProssimiCarichi((resProssimiCarichi.data ?? []) as unknown as Spedizione[])
+      // Ordina per priorità: alta → media → bassa
+      const prioritaOrder = { alta: 0, media: 1, bassa: 2 }
+      const prom = ((resPromemoria.data ?? []) as unknown as Promemoria[])
+        .sort((a, b) => prioritaOrder[a.priorita] - prioritaOrder[b.priorita])
+      setPromemoria(prom)
       setLoading(false)
     }
 
@@ -272,6 +301,65 @@ export default function DashboardPage() {
         </div>
 
       </div>
+
+      {/* Promemoria aperti */}
+      {(loading || promemoria.length > 0) && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck size={15} className="text-blue-600" />
+              <h2 className="text-[13px] font-bold text-slate-700">Promemoria aperti</h2>
+            </div>
+            {!loading && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                {promemoria.length}
+              </span>
+            )}
+          </div>
+          <div className="overflow-auto max-h-64">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0">
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="text-left px-5 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Priorità</th>
+                  <th className="text-left px-5 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Veicolo</th>
+                  <th className="text-left px-5 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Da fare</th>
+                  <th className="text-left px-5 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wide">Creato il</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <tr key={i} className="border-b border-slate-50">
+                      {Array.from({ length: 4 }).map((_, j) => (
+                        <td key={j} className="px-5 py-3"><div className="h-3 bg-slate-100 rounded animate-pulse w-3/4" /></td>
+                      ))}
+                    </tr>
+                  ))
+                ) : promemoria.map(p => {
+                  const cfg = PRIORITA_CONFIG[p.priorita]
+                  return (
+                    <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${cfg.badge}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                          {cfg.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="font-bold font-mono text-xs bg-slate-800 text-white px-1.5 py-0.5 rounded">
+                          {p.veicoli?.targa ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-xs font-semibold text-slate-700">{p.titolo}</td>
+                      <td className="px-5 py-3 text-xs text-slate-400 whitespace-nowrap">{fmtData(p.created_at.slice(0, 10))}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Spedizioni settimana — breakdown */}
       {!loading && spedizioniSettimana.length > 0 && (

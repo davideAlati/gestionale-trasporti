@@ -1,0 +1,9 @@
+{
+  "crons": [
+    { "path": "/api/cron/notifiche-promemoria?priorita=alta",  "schedule": "0 7 * * *"   },
+    { "path": "/api/cron/notifiche-promemoria?priorita=alta",  "schedule": "0 11 * * *"  },
+    { "path": "/api/cron/notifiche-promemoria?priorita=alta",  "schedule": "0 15 * * *"  },
+    { "path": "/api/cron/notifiche-promemoria?priorita=media", "schedule": "0 7 * * *"   },
+    { "path": "/api/cron/notifiche-promemoria?priorita=bassa", "schedule": "0 14 * * 5"  }
+  ]
+}
