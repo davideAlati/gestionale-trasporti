@@ -12,6 +12,7 @@ import {
   FolderOpen,
   ClipboardList,
   Car,
+  UserCog,
 } from 'lucide-react'
 import {
   Tooltip,
@@ -31,6 +32,7 @@ const navItems = [
   { href: '/manutenzioni', icon: Wrench, label: 'Manutenzioni' },
   { href: '/preventivi', icon: ClipboardList, label: 'Preventivi' },
   { href: '/documenti', icon: FolderOpen, label: 'Documenti' },
+  { href: '/team', icon: UserCog, label: 'Team' },
 ]
 
 export default function Sidebar() {
