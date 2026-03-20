@@ -727,7 +727,7 @@ export default function KanbanPage() {
             return (
               <div key={key} className="w-[230px] shrink-0 flex flex-col">
                 <div className={`rounded-xl px-3 py-2 mb-2.5 flex items-center justify-between ${oggi ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                  <p className={`text-[14px] font-bold ${oggi ? 'text-white' : 'text-slate-700'}`}>
+                  <p className={`text-[16px] font-bold ${oggi ? 'text-white' : 'text-slate-700'}`}>
                     {GIORNI_IT[day.getDay()]} {day.getDate()} {MESI_IT[day.getMonth()]}
                   </p>
                   <div className="flex items-center gap-1.5">
