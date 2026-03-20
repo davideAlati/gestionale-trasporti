@@ -157,7 +157,7 @@ function KanbanCard({
       </p>
 
       {/* Origine → Destinazione */}
-      <p className="text-[12px] font-semibold text-slate-600 truncate mt-0.5">
+      <p className="text-[12px] font-semibold text-slate-600 break-words mt-0.5">
         {spedizione.origine || '—'} → {spedizione.destinazione || '—'}
       </p>
 
@@ -767,7 +767,7 @@ export default function KanbanPage() {
             const oggi = isToday(day)
 
             return (
-              <div key={key} className="w-[230px] shrink-0 flex flex-col">
+              <div key={key} className="w-[270px] shrink-0 flex flex-col">
                 <div className={`rounded-xl px-3 py-2 mb-2.5 flex items-center justify-between ${oggi ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>
                   <p className={`text-[16px] font-bold ${oggi ? 'text-white' : 'text-slate-700'}`}>
                     {GIORNI_IT[day.getDay()]} {day.getDate()} {MESI_IT[day.getMonth()]}
@@ -809,7 +809,7 @@ export default function KanbanPage() {
 
           {/* Colonna senza data */}
           {byDay['senza_data'].length > 0 && (
-            <div className="w-[230px] shrink-0 flex flex-col">
+            <div className="w-[270px] shrink-0 flex flex-col">
               <div className="rounded-xl px-3 py-2 mb-2.5 flex items-center justify-between bg-slate-100">
                 <p className="text-[12px] font-bold text-slate-500">Non Assegnato — Senza data</p>
                 <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">
