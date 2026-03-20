@@ -142,7 +142,7 @@ function KanbanCard({
           ? 'bg-slate-100 border-orange-400'
           : 'bg-white border-slate-200 hover:border-blue-200'
       }`}
-      style={isNonAssegnato ? { boxShadow: '0 0 10px 3px rgba(251, 146, 60, 0.35)' } : undefined}
+      style={isNonAssegnato ? { boxShadow: '0 0 6px 1px rgba(251, 146, 60, 0.2)' } : undefined}
     >
       {/* Stato badge */}
       <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full mb-1.5 ${cfg.badge}`}>
@@ -686,7 +686,7 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen mt-[10px]">
 
       <style>{`
         @media print {
