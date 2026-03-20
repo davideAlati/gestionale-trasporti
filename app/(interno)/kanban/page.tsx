@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, ChevronRight, Minus, Plus, X, Save, Trash2, Printer } from 'lucide-react'
 import { PlacesInput } from '@/components/ui/PlacesInput'
@@ -515,6 +515,8 @@ export default function KanbanPage() {
   const [editing, setEditing] = useState<SpedizioneRaw | null>(null)
   const [creating, setCreating] = useState<string | null>(null) // data_partenza precompilata
   const [flashingIds, setFlashingIds] = useState<Set<number>>(new Set())
+  const [boardWidth, setBoardWidth] = useState(0)
+  const boardContainerRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
 
@@ -571,6 +573,15 @@ export default function KanbanPage() {
   }, [weekOffset]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchSpedizioni() }, [fetchSpedizioni])
+
+  // Misura la larghezza del container del board
+  useEffect(() => {
+    const el = boardContainerRef.current
+    if (!el) return
+    const obs = new ResizeObserver(([entry]) => setBoardWidth(entry.contentRect.width))
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
 
   // Realtime: aggiorna automaticamente quando cambiano i dati
   useEffect(() => {
@@ -684,6 +695,14 @@ export default function KanbanPage() {
     }
   }
 
+  // Larghezza colonne: quando zoom < 100% riempie il contenitore
+  const BASE_COL = 270
+  const GAP = 12 // gap-3
+  const numCols = weekDays.length + (byDay['senza_data'].length > 0 ? 1 : 0)
+  const colWidth = zoom < 100 && boardWidth > 0
+    ? Math.max(BASE_COL, Math.floor((boardWidth - GAP * (numCols - 1)) / numCols))
+    : BASE_COL
+
   return (
     <div className="relative min-h-screen mt-[10px]">
 
@@ -758,8 +777,8 @@ export default function KanbanPage() {
       </div>
 
       {/* ── Board ── */}
-      <div className="overflow-x-auto pb-4">
-        <div id="kanban-board" style={{ zoom: `${zoom}%` }} className="flex gap-3 min-w-max">
+      <div ref={boardContainerRef} className="overflow-x-auto pb-4">
+        <div id="kanban-board" style={{ zoom: zoom >= 100 ? `${zoom}%` : '100%' }} className="flex gap-3 min-w-max">
 
           {weekDays.map(day => {
             const key = toDateStr(day)
@@ -767,7 +786,7 @@ export default function KanbanPage() {
             const oggi = isToday(day)
 
             return (
-              <div key={key} className="w-[270px] shrink-0 flex flex-col">
+              <div key={key} style={{ width: colWidth }} className="shrink-0 flex flex-col">
                 <div className={`rounded-xl px-3 py-2 mb-2.5 flex items-center justify-between ${oggi ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>
                   <p className={`text-[16px] font-bold ${oggi ? 'text-white' : 'text-slate-700'}`}>
                     {GIORNI_IT[day.getDay()]} {day.getDate()} {MESI_IT[day.getMonth()]}
@@ -809,7 +828,7 @@ export default function KanbanPage() {
 
           {/* Colonna senza data */}
           {byDay['senza_data'].length > 0 && (
-            <div className="w-[270px] shrink-0 flex flex-col">
+            <div style={{ width: colWidth }} className="shrink-0 flex flex-col">
               <div className="rounded-xl px-3 py-2 mb-2.5 flex items-center justify-between bg-slate-100">
                 <p className="text-[12px] font-bold text-slate-500">Non Assegnato — Senza data</p>
                 <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">
