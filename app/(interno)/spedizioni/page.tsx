@@ -34,7 +34,7 @@ type Spedizione = {
   data_arrivo: string | null
   targa_semirimorchio: string | null
   stato: Stato
-  clienti: { nome: string | null } | null
+  clienti: { nome: string | null; email: string | null } | null
   autisti: { nome: string | null; cognome: string | null } | null
 }
 
@@ -336,7 +336,7 @@ export default function SpedizioniPage() {
 
   const fetchSpedizioni = useCallback(async (p = 0) => {
     setLoading(true)
-    const SELECT = 'id, cliente_id, autista_id, origine, destinazione, peso_kg, mtl, ref_cliente, note, data_partenza, data_arrivo, targa_semirimorchio, stato, clienti(nome), autisti(nome, cognome)'
+    const SELECT = 'id, cliente_id, autista_id, origine, destinazione, peso_kg, mtl, ref_cliente, note, data_partenza, data_arrivo, targa_semirimorchio, stato, clienti(nome, email), autisti(nome, cognome)'
 
     let q = supabase.from('spedizioni').select(SELECT, { count: 'exact' })
 
@@ -398,7 +398,29 @@ export default function SpedizioniPage() {
     fetchSpedizioni(0)
   }
 
+  async function notifyCliente(form: Form) {
+    const email = editing?.clienti?.email
+    if (!email) return
+    const targaCamion = targaByAutista[Number(form.autista_id)] ?? null
+    await fetch('/api/notify-spedizione', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cliente_email:       email,
+        cliente_nome:        editing?.clienti?.nome ?? '',
+        ref_cliente:         form.ref_cliente  || null,
+        origine:             form.origine      || null,
+        destinazione:        form.destinazione || null,
+        data_partenza:       form.data_partenza || null,
+        nuovo_stato:         form.stato,
+        targa_camion:        targaCamion,
+        targa_semirimorchio: form.targa_semirimorchio || null,
+      }),
+    })
+  }
+
   async function handleSave(form: Form) {
+    const statoPrec = editing!.stato
     await supabase.from('spedizioni').update({
       cliente_id:          form.cliente_id   ? Number(form.cliente_id)   : null,
       autista_id:          form.autista_id   ? Number(form.autista_id)   : null,
@@ -413,6 +435,7 @@ export default function SpedizioniPage() {
       targa_semirimorchio: form.targa_semirimorchio || null,
       stato:               form.stato,
     }).eq('id', editing!.id)
+    if (form.stato !== statoPrec) notifyCliente(form)
     setEditing(null)
     fetchSpedizioni(page)
   }

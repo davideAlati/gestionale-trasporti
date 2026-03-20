@@ -37,7 +37,7 @@ type SpedizioneRaw = {
   data_arrivo: string | null
   targa_semirimorchio: string | null
   stato: Stato
-  clienti: { nome: string | null } | null
+  clienti: { nome: string | null; email: string | null } | null
   autisti: { nome: string | null; cognome: string | null } | null
 }
 
@@ -545,7 +545,7 @@ export default function KanbanPage() {
     const mondayStr = toDateStr(days[0])
     const sundayStr = toDateStr(days[6])
 
-    const SELECT = 'id, cliente_id, autista_id, origine, destinazione, peso_kg, mtl, ref_cliente, note, data_partenza, data_arrivo, targa_semirimorchio, stato, clienti(nome), autisti(nome, cognome)'
+    const SELECT = 'id, cliente_id, autista_id, origine, destinazione, peso_kg, mtl, ref_cliente, note, data_partenza, data_arrivo, targa_semirimorchio, stato, clienti(nome, email), autisti(nome, cognome)'
 
     const { data: conData } = await supabase
       .from('spedizioni')
@@ -577,6 +577,27 @@ export default function KanbanPage() {
 
     return () => { supabase.removeChannel(channel) }
   }, [fetchSpedizioni]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function notifyCliente(spedizione: SpedizioneRaw, nuovoStato: Stato, form: EditForm) {
+    const email = spedizione.clienti?.email
+    if (!email) return
+    const targaCamion = targaByAutista[Number(form.autista_id)] ?? null
+    await fetch('/api/notify-spedizione', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cliente_email:       email,
+        cliente_nome:        spedizione.clienti?.nome ?? '',
+        ref_cliente:         form.ref_cliente || null,
+        origine:             form.origine     || null,
+        destinazione:        form.destinazione || null,
+        data_partenza:       form.data_partenza || null,
+        nuovo_stato:         nuovoStato,
+        targa_camion:        targaCamion,
+        targa_semirimorchio: form.targa_semirimorchio || null,
+      }),
+    })
+  }
 
   function flashCard(id: number) {
     setFlashingIds(prev => new Set(prev).add(id))
@@ -614,6 +635,7 @@ export default function KanbanPage() {
 
   async function handleSave(form: EditForm) {
     const id = editing!.id
+    const statoPrec = editing!.stato
     await supabase.from('spedizioni').update({
       cliente_id:          form.cliente_id   ? Number(form.cliente_id)   : null,
       autista_id:          form.autista_id   ? Number(form.autista_id)   : null,
@@ -628,6 +650,7 @@ export default function KanbanPage() {
       targa_semirimorchio: form.targa_semirimorchio || null,
       stato:               form.stato,
     }).eq('id', id)
+    if (form.stato !== statoPrec) notifyCliente(editing!, form.stato, form)
     setEditing(null)
     await fetchSpedizioni()
     flashCard(id)
