@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ChevronLeft, ChevronRight, Minus, Plus, X, Save, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Minus, Plus, X, Save, Trash2, Printer } from 'lucide-react'
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
 
@@ -132,10 +132,17 @@ function KanbanCard({
     ? `${spedizione.autisti.nome ?? ''} ${spedizione.autisti.cognome ?? ''}`.trim()
     : null
 
+  const isNonAssegnato = spedizione.stato === 'Non Assegnato'
+
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer px-3 py-2.5 ${isFlashing ? 'card-flash' : ''}`}
+      className={`rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer px-3 py-2.5 ${isFlashing ? 'card-flash' : ''} ${
+        isNonAssegnato
+          ? 'bg-slate-100 border-orange-400'
+          : 'bg-white border-slate-200 hover:border-blue-200'
+      }`}
+      style={isNonAssegnato ? { boxShadow: '0 0 10px 3px rgba(251, 146, 60, 0.35)' } : undefined}
     >
       {/* Stato badge */}
       <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full mb-1.5 ${cfg.badge}`}>
@@ -681,8 +688,17 @@ export default function KanbanPage() {
   return (
     <div className="relative min-h-screen">
 
+      <style>{`
+        @media print {
+          @page { size: landscape; margin: 0.8cm; }
+          aside, nav, header { display: none !important; }
+          .no-print { display: none !important; }
+          body { zoom: 75%; }
+        }
+      `}</style>
+
       {/* ── Barra superiore ── */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 no-print">
         <div className="flex items-center gap-1.5">
           <button onClick={() => setWeekOffset(w => w - 1)} className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors">
             <ChevronLeft size={18} />
@@ -701,17 +717,27 @@ export default function KanbanPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm">
-          <button onClick={() => setZoom(z => Math.max(50, z - 10))} disabled={zoom <= 50} className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-30 transition-colors">
-            <Minus size={13} />
+        <div className="flex items-center gap-2 no-print">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm">
+            <button onClick={() => setZoom(z => Math.max(50, z - 10))} disabled={zoom <= 50} className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-30 transition-colors">
+              <Minus size={13} />
+            </button>
+            <span className="text-xs font-mono text-slate-600 min-w-[36px] text-center select-none">{zoom}%</span>
+            <button onClick={() => setZoom(z => Math.min(150, z + 10))} disabled={zoom >= 150} className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-30 transition-colors">
+              <Plus size={13} />
+            </button>
+            {zoom !== 100 && (
+              <button onClick={() => setZoom(100)} className="ml-1 text-[11px] text-blue-600 hover:underline">100%</button>
+            )}
+          </div>
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-600 hover:bg-slate-50 hover:text-slate-800 text-xs font-semibold transition-colors"
+            title="Stampa kanban in orizzontale"
+          >
+            <Printer size={14} />
+            Stampa
           </button>
-          <span className="text-xs font-mono text-slate-600 min-w-[36px] text-center select-none">{zoom}%</span>
-          <button onClick={() => setZoom(z => Math.min(150, z + 10))} disabled={zoom >= 150} className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-30 transition-colors">
-            <Plus size={13} />
-          </button>
-          {zoom !== 100 && (
-            <button onClick={() => setZoom(100)} className="ml-1 text-[11px] text-blue-600 hover:underline">100%</button>
-          )}
         </div>
       </div>
 
