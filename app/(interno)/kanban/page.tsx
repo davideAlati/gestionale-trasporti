@@ -690,10 +690,10 @@ export default function KanbanPage() {
 
       <style>{`
         @media print {
-          @page { size: landscape; margin: 0.8cm; }
+          @page { size: A4 landscape; margin: 0.5cm; }
           aside, nav, header { display: none !important; }
           .no-print { display: none !important; }
-          body { zoom: 75%; }
+          main { margin: 0 !important; padding: 0 !important; }
           .overflow-x-auto { overflow: visible !important; }
           ::-webkit-scrollbar { display: none !important; }
           * { scrollbar-width: none !important; }
@@ -734,7 +734,21 @@ export default function KanbanPage() {
             )}
           </div>
           <button
-            onClick={() => window.print()}
+            onClick={() => {
+              const board = document.getElementById('kanban-board')
+              if (board) {
+                // A4 landscape: 297mm - 1cm margins ≈ 1065px usable at 96dpi
+                const available = 1065
+                const boardWidth = board.scrollWidth
+                const scale = boardWidth > available ? available / boardWidth : 1
+                board.style.zoom = String(scale)
+              }
+              window.print()
+              setTimeout(() => {
+                const board = document.getElementById('kanban-board')
+                if (board) board.style.zoom = ''
+              }, 1000)
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-600 hover:bg-slate-50 hover:text-slate-800 text-xs font-semibold transition-colors"
             title="Stampa kanban in orizzontale"
           >
@@ -746,7 +760,7 @@ export default function KanbanPage() {
 
       {/* ── Board ── */}
       <div className="overflow-x-auto pb-4">
-        <div style={{ zoom: `${zoom}%` }} className="flex gap-3 min-w-max">
+        <div id="kanban-board" style={{ zoom: `${zoom}%` }} className="flex gap-3 min-w-max">
 
           {weekDays.map(day => {
             const key = toDateStr(day)
