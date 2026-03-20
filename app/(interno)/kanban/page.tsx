@@ -694,11 +694,14 @@ export default function KanbanPage() {
           aside, nav, header { display: none !important; }
           .no-print { display: none !important; }
           body { zoom: 75%; }
+          .overflow-x-auto { overflow: visible !important; }
+          ::-webkit-scrollbar { display: none !important; }
+          * { scrollbar-width: none !important; }
         }
       `}</style>
 
       {/* ── Barra superiore ── */}
-      <div className="flex items-center justify-between mb-5 no-print">
+      <div className="flex items-center justify-between mb-[35px] no-print">
         <div className="flex items-center gap-1.5">
           <button onClick={() => setWeekOffset(w => w - 1)} className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors">
             <ChevronLeft size={18} />
