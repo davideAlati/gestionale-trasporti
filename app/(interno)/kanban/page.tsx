@@ -515,6 +515,7 @@ export default function KanbanPage() {
   const [editing, setEditing] = useState<SpedizioneRaw | null>(null)
   const [creating, setCreating] = useState<string | null>(null) // data_partenza precompilata
   const [flashingIds, setFlashingIds] = useState<Set<number>>(new Set())
+  const [hideDomenica, setHideDomenica] = useState(false)
 
   const supabase = createClient()
 
@@ -756,6 +757,17 @@ export default function KanbanPage() {
             <Printer size={14} />
             Stampa
           </button>
+          <button
+            onClick={() => setHideDomenica(h => !h)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl shadow-sm text-xs font-semibold transition-colors ${
+              hideDomenica
+                ? 'bg-blue-700 border-blue-700 text-white hover:bg-blue-800'
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+            title={hideDomenica ? 'Mostra domenica' : 'Nascondi domenica'}
+          >
+            {hideDomenica ? 'Dom. nascosta' : 'Nascondi Dom.'}
+          </button>
         </div>
       </div>
 
@@ -763,7 +775,7 @@ export default function KanbanPage() {
       <div className="overflow-x-auto pb-4">
         <div id="kanban-board" style={{ zoom: `${zoom}%` }} className="flex gap-3 min-w-max">
 
-          {weekDays.map(day => {
+          {weekDays.filter(day => !(hideDomenica && day.getDay() === 0)).map(day => {
             const key = toDateStr(day)
             const cards = byDay[key] ?? []
             const oggi = isToday(day)
